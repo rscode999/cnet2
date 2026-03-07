@@ -647,6 +647,7 @@ public:
             initial_inputs.resize(1);
             initial_inputs[0] = input;
 
+            intermediate_outputs.clear();
             intermediate_outputs.resize(1);
             intermediate_outputs[0] = {};
         }

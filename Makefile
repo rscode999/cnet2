@@ -1,4 +1,4 @@
-MAIN='main.cpp' #Put your path to a file containing `main` here
+MAIN='tests.cpp' #Put your path to a file containing `main` here
 OUTPUT_EXECUTABLE_NAME='a' #put your desired executable name here
 EIGEN_DIRECTORY_PATH='eigenlite/' #Put your path to the Eigen 3 folder here
 

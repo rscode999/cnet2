@@ -5,6 +5,8 @@
 #include <thread>
 #include <vector>
 
+#include <iostream>
+
 #pragma once
 
 
@@ -380,7 +382,7 @@ private:
         output.dB.resize(layers.size());
         output.dW.resize(layers.size());
 
-        Eigen::VectorXd delta(1);
+        Eigen::VectorXd delta = Eigen::VectorXd(1);
         auto final_activation = layers.back().activation_function();
         bool final_activation_using_softmax = final_activation->name() == "softmax";
         bool using_cross_entropy_loss = loss_calculator->name() == "cross_entropy";
@@ -413,7 +415,6 @@ private:
         }
 
 
-
         //Compute for the other layers
         for(int l = static_cast<int>(layers.size()) - 1; l >= 0; l--) {
 
@@ -424,7 +425,10 @@ private:
 
 
             // Weight gradient = delta * previous activation transposed
-            output.dW[l] = delta * previous_post_activation.transpose();
+            Eigen::MatrixXd prev_post_activ_transpose = previous_post_activation.transpose();
+            Eigen::MatrixXd dW_temp = delta * prev_post_activ_transpose;
+             ^ this line returns a VectorXd when it should return a MatrixXd. Something with static dimensions or the transpose.
+            output.dW[l] = dW_temp;
             // Bias gradient = delta
             output.dB[l] = delta;
 
@@ -439,7 +443,7 @@ private:
                 const Eigen::VectorXd& previous_layer_output = previous_activation->using_pre_activation()
                     ? intermediate_outputs[l-1].pre_activation
                     : intermediate_outputs[l-1].post_activation;
-
+                
                 delta = delta.cwiseProduct(previous_activation->compute_derivative(previous_layer_output));
             }
         }
@@ -485,6 +489,7 @@ private:
                 velocity_biases[b] = VectorXd::Zero(layers[b].output_dimension());
             }
         }
+
 
         //update the layers
         for(size_t l = 0; l < grads.dW.size(); l++) {

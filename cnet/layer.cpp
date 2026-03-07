@@ -89,7 +89,7 @@ public:
 
         //Initialize weights and biases to random values on [-1, 1]
         weights = Eigen::MatrixXd::Random(output_dimension, input_dimension);
-        biases  = Eigen::VectorXd::Random(output_dimension, 1);
+        biases  = Eigen::VectorXd::Random(output_dimension, 1, Eigen::VectorTag{});
         //Scale them
         weights = weights * initialization_scale_factor;
         biases = biases * initialization_scale_factor;

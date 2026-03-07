@@ -27,6 +27,7 @@ namespace Eigen {
  */
 struct VectorTag {};
 
+struct MatrixTag {};
 
 
 /**
@@ -103,9 +104,12 @@ private:
 
 public:
 
+    /**
+     * Creates a 1x1 uninitialized matrix
+     */
     Matrix() {
         static_assert(static_rows == Dynamic, "Default constructor is for Dynamic matrices only");
-        static_assert(static_cols == Dynamic, "Default constructor is for Dynamic matrices only");
+        static_assert(static_cols == Dynamic || static_cols == 1, "Default constructor is for Dynamic matrices or vectors only");
 
         contents = new T[1];
         dynamic_rows = 1;
@@ -160,6 +164,38 @@ public:
     }
 
 
+    /**
+     * Copies `other` into a new matrix object with identical static row/column counts.
+     * 
+     * The number of static rows and columns is retained.
+     * 
+     * @param other other matrix to copy
+     */
+    Matrix(const Matrix& other) {
+
+        this->dynamic_rows = other.rows();
+        this->dynamic_cols = other.cols();
+
+        contents = new T[other.rows() * other.cols()];
+        std::copy(other.contents, other.contents + (other.rows() * other.cols()), contents);
+    }
+
+
+    /**
+     * Copies the pointer to `other`'s memory into a new matrix object with identical static row/column counts.
+     * @param other other matrix to copy
+     */
+    Matrix(Matrix&& other) noexcept {
+        contents = other.contents;
+        dynamic_rows = other.dynamic_rows;
+        dynamic_cols = other.dynamic_cols;
+
+        other.contents = nullptr;
+        other.dynamic_rows = 0;
+        other.dynamic_cols = 0;
+    }
+
+
 
     /////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////
@@ -171,6 +207,10 @@ public:
         return dynamic_cols;
     }
 
+    constexpr int32_t staticCols() {
+        return static_cols;
+    }
+
     /**
      * @return number of rows
      */
@@ -178,12 +218,16 @@ public:
         return dynamic_rows;
     }
 
+    constexpr int32_t staticRows() {
+        return static_rows;
+    }
+
     /**
      * @return number of rows (for column vectors only)
      */
     int32_t size() const {
         static_assert(static_cols == 1, "Size operation is for column vectors only");
-        return static_cols;
+        return dynamic_rows;
     }
 
 
@@ -444,6 +488,9 @@ public:
 
 
 
+    /**
+     * @return the transpose of this matrix
+     */
     Matrix transpose() const {
         Matrix<T, static_cols, static_rows> output(cols(), rows());
 
@@ -610,6 +657,32 @@ public:
 
         return *this;
     } 
+
+
+
+    /**
+     * Assigns the pointer to `other`'s contents to this matrix.
+     * 
+     * `other` must have the same static dimensions as this matrix.
+     * There is strict comparison between positive static dimensions and `Dynamic`.
+     * 
+     * @param other other matrix to assign to
+     * @return reference to this matrix after the assignment
+     */
+    Matrix& operator=(Matrix&& other) noexcept {
+        if (this != &other) {
+            delete[] contents;
+
+            contents = other.contents;
+            dynamic_rows = other.dynamic_rows;
+            dynamic_cols = other.dynamic_cols;
+
+            other.contents = nullptr;
+            other.dynamic_rows = 0;
+            other.dynamic_cols = 0;
+        }
+        return *this;
+    }
 
 
 
@@ -887,6 +960,19 @@ inline Matrix<T, lhs_static_rows, rhs_static_cols> operator*(const Matrix<T, lhs
     }
     return result;
 }
+
+
+
+template<typename T>
+inline Matrix<T, Dynamic, Dynamic> operator*(const Matrix<T, Dynamic, 1>& lhs, const Matrix<T, 1, Dynamic>& rhs) {
+    Matrix<T, Dynamic, Dynamic> result(lhs.rows(), rhs.cols());
+    for (int i = 0; i < lhs.rows(); ++i)
+        for (int j = 0; j < rhs.cols(); ++j)
+            result(i,j) = lhs(i) * rhs(0,j);
+
+    return result;
+}
+
 
 
 
