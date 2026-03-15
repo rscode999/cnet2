@@ -8,26 +8,32 @@ void test_constructor_initializer() {
     using namespace std;
     using namespace Eigen;
 
-    //Static Size
-    Matrix<double, 2, 3> m = Matrix<double, 2, 3>(2, 3);
-    m << 1, 2, 3, 4, 5, 6;
-    cout << m << endl; // [[1, 2, 3], [4, 5, 6]]
+    //Static matrix
+    Matrix<double, MATRIX> m1(2, 2);
+    m1 << 1, 2, 3, 4;
+    cout << m1 << endl; //[[1, 2], [3, 4]]
 
-    //Dynamic Size (MatrixXd)
-    MatrixXd m2 = MatrixXd(2, 2);
-    m2 << 1, 2, 3, 4;
-    cout << m2 << endl; //[[1, 2], [3, 4]]
-    
-    //Partial Dynamic Size
-    Matrix<double, 1, Dynamic> m3 = Matrix<double, 1, Dynamic>(1, 3);
-    m3 << 0,0,1;
-    cout << m3 << endl; //[[0, 0, 1]]
-    Matrix<double, Dynamic, 1> m4 = Matrix<double, Dynamic, 1>(3, 1);
-    m4 << 0,0,1;
-    cout << m4 << endl; //[[0], [0], [1]]
+    //Empty matrix
+    Matrix<double, MATRIX> m2;
+    cout << m2 << endl;
+
+    //Assignment to previously empty matrix
+    m2 = m1;
+    m2 << 4, 3, 2, 1;
+    cout << m2; //[[4, 3], [2, 1]]
+    cout << m1 << endl; //[[1, 2], [3, 4]]
+
+    //Assign a static-type vector to a matrix
+    Matrix<double, COLUMN_VECTOR> v1(3);
+    v1 << 1, 2, 3;
+    Matrix<double, MATRIX> m3 = v1;
+    cout << m3 << endl; //[[1, 2, 3]]
+    v1 << 4, 5, 6;
+    m3 = v1;
+    cout << m3 << endl; //[[4, 5, 6]]
 
     //Constant
-    Matrix<double, Dynamic, Dynamic> m5 = Matrix<double, Dynamic, Dynamic>::Constant(3, 3, -100);
+    Matrix<double, MATRIX> m5 = Matrix<double, MATRIX>::Constant(3, 3, -100);
     cout << m5 << endl; //3x3 Matrix filled the value -100
     VectorXd m6 = VectorXd::Constant(2, -69);
     cout << m6 << endl; //2-D vector with the value -69
@@ -57,10 +63,10 @@ void test_ruleof3() {
 
     //COPY CONSTRUCTOR
 
-    Matrix<double, 2, 2> m(2, 2);
+    Matrix<double, MATRIX> m(2, 2);
     m << 1, 2, 3, 4;
 
-    Matrix<double, Dynamic, Dynamic> other = m;
+    Matrix<double, MATRIX> other = m;
 
     other(0,0) = -1;
     cout << m; //[[1, 2], [3, 4]]
@@ -69,7 +75,7 @@ void test_ruleof3() {
 
 
     // = OPERATOR
-    Matrix<double, Dynamic, Dynamic> other2 = Matrix<double, Dynamic, Dynamic>::Zero(2,3);
+    Matrix<double, MATRIX> other2 = Matrix<double, MATRIX>::Zero(2,3);
     other2 = other;
     other2(1,1) = -100;
 
@@ -100,7 +106,7 @@ void test_arithmetic() {
     n << 0, 1, 0, 0;
 
     //ADD (matrices)
-    Matrix<double, 2, 2> result(2, 2);
+    Matrix<double, MATRIX> result(2, 2);
     result = m + n;
     cout << result << endl; // [[1, 3], [3, 4]]
 
@@ -252,13 +258,21 @@ void test_transpose() {
 
     cout << m.transpose().transpose() << endl; //[[1, 2], [3, 4], [5, 6]]
 
-    m = VectorXd(3);
+    m = MatrixXd(3, 1);
     m << 1, 2, 3;
     cout << m.transpose() << endl; //Row vector [[1, 2, 3]]
 
     m = MatrixXd(1, 1);
     m << 1;
     cout << m.transpose() << endl; // [[1]]
+
+    //This operation caused static type incompatibilities in the old Matrix
+    VectorXd v1 = VectorXd(3);
+    v1 << 1, 2, 3;
+    VectorXd v2 = VectorXd(3);
+    v2 << 1, 2, 3;
+    MatrixXd result = v1 * v2.transpose(); //THIS IS A MATRIXXD
+    cout << result << endl; //[[1, 2, 3], [2, 4, 6], [3, 6, 9]]
 }
 
 
@@ -286,14 +300,64 @@ void test_unary_expr() {
 
 
 
+/**
+ * Tests matrix-vector conversions
+ */
+void test_conversions() {
+    using namespace std;
+    using namespace Eigen;
+
+    VectorXd v(3);
+    v << 1, 2, 3;
+    MatrixXd m = v;
+    cout << m << endl; //[[1], [2], [3]]
+
+    // m = MatrixXd(3); //Should Static Assert
+}
+
+
+
+
+/**
+ * Miscellaneous tests, to aid in debugging
+ */
+void test_extras() {
+    using namespace std;
+    using namespace Eigen;
+
+    /*
+    The line:
+    VectorXd result = v * (2.0 - v);
+    caused an assertion failure due to mismatched matrix dimensions
+    */
+    VectorXd v(3);
+    v << 1, 2, 3;
+    VectorXd result = v.cwiseProduct(2.0 - v); //Should not cause an assertion.
+    cout << result << endl; 
+
+
+    VectorXd actuals(3);
+    actuals << 1, 2, 3;
+    VectorXd preds(3);
+    preds << -1, 2, 100;
+    VectorXd clipped_preds = preds.max(3).min(1);
+    double loss = -( actuals.cwiseProduct(clipped_preds.log()) ).sum(); //Should not cause an assertion
+    cout << loss << endl;
+}
+
+
+
+
 
 int main() {
     // test_constructor_initializer();
-    test_ruleof3();
+    // test_ruleof3();
     // test_arithmetic();
     // test_arithmetic_assigns();
     // test_matrix_multiplication();
     // test_methods();
     // test_transpose();
     // test_unary_expr();
+    // test_conversions();
+    test_extras();
 }

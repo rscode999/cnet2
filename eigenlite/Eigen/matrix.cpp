@@ -6,10 +6,7 @@
 #include <sstream>
 #include <random>
 
-/**
- * Indicates a dynamically selected matrix dimension
- */
-#define Dynamic -100
+
 
 /**
  * Indicates that Eigen Lite is being used (rather than the full Eigen distribution)
@@ -22,18 +19,40 @@
 namespace Eigen {
 
 
+
+
+/**
+ * Defines the static type (i.e. matrix, column-vector) of a Matrix object
+ */
+enum MatrixStaticType {
+    MATRIX,
+    COLUMN_VECTOR
+};
+
+
 /**
  * Used to distinguish calls to `VectorXd::Random(n_rows, range)` from calls to `MatrixXd::Random(n_rows, n_cols)`.
  */
 struct VectorTag {};
 
+/**
+ * Used to distinguish calls to `VectorXd::Random(n_rows, range)` from calls to `MatrixXd::Random(n_rows, n_cols)`.
+ */
 struct MatrixTag {};
 
 
+
 /**
- * Imitates Eigen's `Matrix` class
+ * Imitates Eigen's `Matrix` class.
+ * 
+ * Has only one static argument, other than the datatype of the items stored.
+ * 
+ * The matrix's contents are always allocated to the heap.
+ * 
+ * @param T datatype of the Matrix
+ * @param static_type `MatrixStaticType`
  */
-template<typename T, int32_t static_rows, int32_t static_cols>
+template<typename T, MatrixStaticType static_type>
 class Matrix {
 
 private:
@@ -46,16 +65,16 @@ private:
     /**
      * Number of rows. Must be positive.
      */
-    int32_t dynamic_rows;
+    int32_t n_rows;
 
     /**
      * Number of columns. Must be positive.
      */
-    int32_t dynamic_cols;
+    int32_t n_cols;
 
 
-    template<typename Tp, int32_t other_static_rows, int32_t other_static_cols>
-    friend class Matrix;
+    template<typename T_, MatrixStaticType static_type_>
+    friend class Matrix; //Declares self as friend class
 
 
     /**
@@ -68,7 +87,7 @@ private:
      * @return index in `contents` at (`row_number`, `col_number`)
      */
     inline int32_t contents_index_at(int32_t row_index, int32_t col_index) const {
-        return row_index * dynamic_cols + col_index;
+        return row_index * n_cols + col_index;
     }
 
 
@@ -83,7 +102,7 @@ private:
 
     public:
         CommaInitializer(Matrix& m, T value) : mat(m), index_(0), total_(mat.rows() * mat.cols()) {
-            assert(mat.rows() * mat.cols() > 0);
+            assert(mat.rows() * mat.cols() > 0 && "Comma initialize requires matrix to be non-empty");
             mat.contents[index_++] = value;
         }
 
@@ -105,15 +124,12 @@ private:
 public:
 
     /**
-     * Creates a 1x1 uninitialized matrix
+     * Creates an empty uninitialized matrix
      */
     Matrix() {
-        static_assert(static_rows == Dynamic, "Default constructor is for Dynamic matrices only");
-        static_assert(static_cols == Dynamic || static_cols == 1, "Default constructor is for Dynamic matrices or vectors only");
-
-        contents = new T[1];
-        dynamic_rows = 1;
-        dynamic_cols = 1;
+        contents = nullptr;
+        n_rows = 0;
+        n_cols = 0;
     }
 
 
@@ -122,25 +138,21 @@ public:
      * @param n_rows Number of rows to use. Must be positive (and must equal the static row count, if not Dynamic)
      * @param n_cols Number of columns to use. Must be positive (and must equal the static row count, if not Dynamic)
      */
-    Matrix(int32_t n_rows, int32_t n_cols) : dynamic_rows(n_rows), dynamic_cols(n_cols) {
-        static_assert(static_rows > 0 || static_rows == Dynamic, "Static row count must be positive or equal Dynamic");
-        static_assert(static_cols > 0 || static_cols == Dynamic, "Static column count must be positive or equal Dynamic");
-        assert((n_rows == static_rows || static_rows == Dynamic) && "Matrix creation: Rows must be positive and equal static row count, or be dynamic");
-        assert((n_cols == static_cols || static_cols == Dynamic) && "Matrix creation: Columns must be positive and equal static column count, or be dynamic");
-    
+    Matrix(int32_t n_rows, int32_t n_cols) : n_rows(n_rows), n_cols(n_cols) {
         contents = new T[n_rows * n_cols];
     }
 
 
     /**
      * Creates an uninitialized vector (a Matrix with 1 column) with `n_rows` rows.
-     * @param n_rows Number of rows to use. Must be positive (and must equal the static row count, if not Dynamic).
+     * 
+     * For matrices of static type 1 (i.e. column vectors) only.
+     * 
+     * @param n_rows Number of rows to use. Must be positive.
      */
-    Matrix(int32_t n_rows) : dynamic_rows(n_rows) {
-        static_assert(static_rows > 0 || static_rows == Dynamic, "Static row count must be positive or equal Dynamic");
-        assert((n_rows == static_rows || static_rows == Dynamic) && "Matrix creation: Rows must be positive and static row count, or be dynamic");
-        
-        dynamic_cols = 1;
+    Matrix(int32_t n_rows) : n_rows(n_rows) {
+        static_assert(static_type == COLUMN_VECTOR, "Row-only initialization is for column-vectors only");
+        n_cols = 1;
         contents = new T[n_rows];
     }
     
@@ -153,11 +165,11 @@ public:
      * 
      * @param other other matrix to copy
      */
-    template<typename Tp, int32_t other_static_rows, int32_t other_static_cols>
-    Matrix(const Matrix<Tp, other_static_rows, other_static_cols>& other) {
+    template<typename Tp, MatrixStaticType other_static_type>
+    Matrix(const Matrix<Tp, other_static_type>& other) {
 
-        this->dynamic_rows = other.rows();
-        this->dynamic_cols = other.cols();
+        this->n_rows = other.rows();
+        this->n_cols = other.cols();
 
         contents = new T[other.rows() * other.cols()];
         std::copy(other.contents, other.contents + (other.rows() * other.cols()), contents);
@@ -173,8 +185,8 @@ public:
      */
     Matrix(const Matrix& other) {
 
-        this->dynamic_rows = other.rows();
-        this->dynamic_cols = other.cols();
+        this->n_rows = other.rows();
+        this->n_cols = other.cols();
 
         contents = new T[other.rows() * other.cols()];
         std::copy(other.contents, other.contents + (other.rows() * other.cols()), contents);
@@ -187,13 +199,14 @@ public:
      */
     Matrix(Matrix&& other) noexcept {
         contents = other.contents;
-        dynamic_rows = other.dynamic_rows;
-        dynamic_cols = other.dynamic_cols;
+        n_rows = other.n_rows;
+        n_cols = other.n_cols;
 
         other.contents = nullptr;
-        other.dynamic_rows = 0;
-        other.dynamic_cols = 0;
+        other.n_rows = 0;
+        other.n_cols = 0;
     }
+
 
 
 
@@ -204,50 +217,47 @@ public:
      * @return number of columns
      */
     int32_t cols() const {
-        return dynamic_cols;
-    }
-
-    constexpr int32_t staticCols() {
-        return static_cols;
+        return n_cols;
     }
 
     /**
      * @return number of rows
      */
     int32_t rows() const {
-        return dynamic_rows;
+        return n_rows;
     }
 
-    constexpr int32_t staticRows() {
-        return static_rows;
+
+    /**
+     * @return Matrix's static type
+     */
+    constexpr MatrixStaticType staticType() {
+        return static_type;
     }
+
 
     /**
      * @return number of rows (for column vectors only)
      */
     int32_t size() const {
-        static_assert(static_cols == 1, "Size operation is for column vectors only");
-        return dynamic_rows;
+        static_assert(static_type == COLUMN_VECTOR, "Size operation is for column vectors only");
+        return n_rows;
     }
 
 
 
     /**
-     * Returns a matrix containing `n_rows` rows and `n_cols` columns, all initialized to the value `constant_value`.
+     * Returns a (statically defined) matrix containing `n_rows` rows and `n_cols` columns, all initialized to the value `constant_value`.
      * 
-     * For Matrices with static row and column count equaling `Dynamic` only.
-     * 
-     * @param n_rows Number of rows in the new matrix. Must match the statically given row count
-     * @param n_cols Number of columns in the new matrix. Must match the statically given column count
+     * @param n_rows Number of rows in the new matrix. Must be positive
+     * @param n_cols Number of columns in the new matrix. Must be positive
      * @param constant_value Value to initialize the matrix with
      */
     static Matrix Constant(int32_t n_rows, int32_t n_cols, const T& constant_value) {
-        static_assert(static_rows == Dynamic, "Constant matrix creation is for row/column count equaling Dynamic only");
-        static_assert(static_cols == Dynamic, "Constant matrix creation is for row/column count equaling Dynamic only (You may have used a Matrix operation on a Vector)");
-        assert(n_rows > 0 && "Constant vector creation requires row count to be positive");
-        assert(n_cols > 0 && "Constant vector creation requires column count to be positive");
+        assert(n_rows > 0 && "Constant matrix creation requires row count to be positive");
+        assert(n_cols > 0 && "Constant matrix creation requires column count to be positive");
 
-        Matrix<T, Dynamic, Dynamic> result(n_rows, n_cols);
+        Matrix<T, MATRIX> result(n_rows, n_cols);
 
         for (int32_t r = 0; r < n_rows; r++) {
             for (int32_t c = 0; c < n_cols; c++) {
@@ -259,7 +269,7 @@ public:
     }
 
     /**
-     * Returns a vector (Matrix with 1 static column) containing `n_rows`, all initialized to the value `constant_value`.
+     * Returns a (statically typed) vector containing `n_rows`, all initialized to the value `constant_value`.
      * 
      * For vectors with static row count equaling `Dynamic` only.
      * 
@@ -267,11 +277,10 @@ public:
      * @param constant_value Value to initialize the vector with
      */
     static Matrix Constant(int32_t n_rows, const T& constant_value) {
-        static_assert(static_rows == Dynamic, "Constant vector creation is for row count equaling Dynamic only");
-        static_assert(static_cols == 1, "Constant-vector creation is for vectors only (i.e. static column count is 1)");
+        static_assert(static_type == COLUMN_VECTOR, "Constant vector creation is for statically typed vectors");
         assert(n_rows > 0 && "Constant vector creation requires row count to be positive");
 
-        Matrix<T, static_rows, 1> result(n_rows, 1);
+        Matrix<T, COLUMN_VECTOR> result(n_rows);
 
         for (int32_t r = 0; r < n_rows; r++) {
             result(r, 0) = constant_value;
@@ -284,12 +293,15 @@ public:
 
     /**
      * Returns the element-wise product of this matrix and another matrix.
+     * 
+     * The output's static type matches that of this object.
      *
      * @param other The matrix to multiply. Must have the same number of rows and columns as this matrix.
      * @return New matrix containing the coefficient-wise product.
      */
-    template<typename Tp, int32_t rhs_static_rows, int32_t rhs_static_cols> 
-    Matrix<Tp, static_rows, static_cols> cwiseProduct(const Matrix<Tp, rhs_static_rows, rhs_static_cols>& other) const {
+    template<typename Tp, MatrixStaticType other_static_type> 
+    Matrix<Tp, static_type> cwiseProduct(const Matrix<Tp, other_static_type>& other) const {
+        static_assert(other_static_type == static_type, "cWiseProduct: Static types of operands must match");
         assert(rows() == other.rows() && "cwiseProduct: Rows must match other matrix's row count");
         assert(cols() == other.cols() && "cwiseProduct: Columns must match other matrix's column count");
 
@@ -324,9 +336,9 @@ public:
      */
     Matrix log() const {
 
-        Matrix<T, static_rows, static_cols> output(dynamic_rows, dynamic_cols);
-        for (int32_t r = 0; r < dynamic_rows; ++r) {
-            for (int32_t c = 0; c < dynamic_cols; ++c) {
+        Matrix output(n_rows, n_cols);
+        for (int32_t r = 0; r < n_rows; ++r) {
+            for (int32_t c = 0; c < n_cols; ++c) {
                 output(r, c) = std::log((*this)(r, c));
             }
         }
@@ -343,7 +355,7 @@ public:
      * @return matrix with no element greater than `max_value`
      */
     Matrix max(const T& max_value) const {
-        Matrix<T, static_rows, static_cols> output(dynamic_rows, dynamic_cols);
+        Matrix output(n_rows, n_cols);
 
         for (int32_t r = 0; r < rows(); r++) {
             for(int32_t c = 0; c < cols(); c++) {
@@ -362,7 +374,7 @@ public:
      * @return matrix with no element less than `min_value`
      */
     Matrix min(const T& min_value) const {
-        Matrix<T, static_rows, static_cols> output(dynamic_rows, dynamic_cols);
+        Matrix output(n_rows, n_cols);
 
         for (int32_t r = 0; r < rows(); r++) {
             for(int32_t c = 0; c < cols(); c++) {
@@ -394,22 +406,18 @@ public:
 
 
     /**
-     * Returns a matrix (of static dimensions `Dynamic` by `Dynamic`) of dimension `n_rows` by `n_cols` initialized to the range [-`range`, `range`].
-     * 
-     * For matrices of static dimensions `Dynamic` by `Dynamic` only.
+     * Returns a matrix of dimension `n_rows` by `n_cols` initialized to the range [-`range`, `range`].
      * 
      * @param n_rows Number of rows in the matrix. Must be positive.
      * @param n_cols Number of columns in the matrix. Must be positive.
      * @param range Maximum absolute value for each element in the matrix. Default 1.
      * @return matrix randomly initialized
      */
-    static Matrix<T, Dynamic, Dynamic> Random(int32_t n_rows, int32_t n_cols, const T& range = 1) {
-        static_assert(static_rows == Dynamic, "Random matrix creation is for row/column count equaling Dynamic only");
-        static_assert(static_cols == Dynamic, "Random matrix creation is for row/column count equaling Dynamic only (If creating a vector, call with the VectorTag)");
+    static Matrix Random(int32_t n_rows, int32_t n_cols, const T& range = 1, MatrixTag = {}) {
         assert(n_rows > 0 && "Random vector creation requires row count to be positive");
         assert(n_cols > 0 && "Random vector creation requires column count to be positive");
         
-        Matrix<T, Dynamic, Dynamic> result(n_rows, n_cols);
+        Matrix result(n_rows, n_cols);
 
         // Random number generator
         static std::random_device rd;
@@ -426,7 +434,7 @@ public:
     }
 
     /**
-     * Returns a vector (i.e. static column count is 1) (of static dimensions `Dynamic` by 1) of dimension `n_rows` initialized to the range [-`range`, `range`]
+     * Returns a vector of dimension `n_rows` initialized to the range [-`range`, `range`]
      * 
      * When using the range argument, this method may be mistaken for the `MatrixXd::Random(n_rows, n_cols, range = 1)` call.
      * If so, call with the VectorTag: `VectorXd v = VectorXd::Random(n_rows, n_cols, VectorTag{})`.
@@ -436,12 +444,11 @@ public:
      * @param VectorTag Used to force the compiler to select the vector's method instead of the matrix method
      * @return vector randomly initialized
      */
-    static Matrix<T, Dynamic, 1> Random(int32_t n_rows, const T& range = 1, VectorTag = {}) {
-        static_assert(static_rows == Dynamic, "Random vector creation is for row/column count equaling Dynamic only");
-        static_assert(static_cols == 1, "Random vector creation is for column vectors (i.e. static column count is 1) only");
+    static Matrix<T, COLUMN_VECTOR> Random(int32_t n_rows, const T& range = 1, VectorTag = {}) {
+        static_assert(static_type == COLUMN_VECTOR, "Random vector creation is for statically typed column-vectors only");
         assert(n_rows > 0 && "Random vector creation requires row count to be positive");
 
-        Matrix<T, Dynamic, 1> output(n_rows, 1);
+        Matrix<T, COLUMN_VECTOR> output(n_rows);
 
         // Random number generator
         static std::random_device rd;
@@ -462,8 +469,8 @@ public:
      */
     T squaredNorm() const {
         T output = T();
-        for (int32_t r = 0; r < dynamic_rows; ++r) {
-            for (int32_t c = 0; c < dynamic_cols; ++c) {
+        for (int32_t r = 0; r < n_rows; ++r) {
+            for (int32_t c = 0; c < n_cols; ++c) {
                 T val = (*this)(r, c);
                 output += val * val;
             }
@@ -490,16 +497,16 @@ public:
 
     /**
      * @return the transpose of this matrix
+     * 
+     * Always returns a statically-typed matrix (not a column vector).
      */
-    Matrix transpose() const {
-        Matrix<T, static_cols, static_rows> output(cols(), rows());
+    Matrix<T, MATRIX> transpose() const {
+        Matrix<T, MATRIX> output(cols(), rows());
 
-        for (int32_t c = 0; c < cols(); c++) {
-            for (int32_t r = 0; r < rows(); r++) {
-                output(c, r) = contents[contents_index_at(r, c)];
-            }
-        }
-        
+        for (int r = 0; r < rows(); ++r)
+            for (int c = 0; c < cols(); ++c)
+                output(c, r) = (*this)(r, c);
+
         return output;
     }
 
@@ -512,7 +519,7 @@ public:
      */
     template<typename UnaryFunc>
     Matrix unaryExpr(UnaryFunc func) const {
-        Matrix<T, static_rows, static_cols> result(rows(), cols());
+        Matrix result(rows(), cols());
 
         for (int32_t r = 0; r < rows(); ++r) {
             for (int32_t c = 0; c < cols(); ++c) {
@@ -529,14 +536,10 @@ public:
     /**
      * Returns a matrix containing `n_rows` rows and `n_cols` columns, all initialized to the value 0.
      * 
-     * For Matrices with static row and column count equaling `Dynamic` only. 
-     * 
      * @param n_rows Number of rows in the new matrix. Must be positive
      * @param n_cols Number of columns in the new matrix. Must be positive
      */
     static Matrix Zero(int32_t n_rows, int32_t n_cols) {
-        static_assert(static_rows == Dynamic, "Zero matrix creation is for row/column count equaling Dynamic only");
-        static_assert(static_cols == Dynamic, "Zero matrix creation is for row/column count equaling Dynamic only");
         assert((n_rows > 0) && "Constant matrix creation: Rows must be positive");
         assert((n_cols > 0) && "Constant matrix creation: Columns must be positive");
         
@@ -544,18 +547,17 @@ public:
     }
 
     /**
-     * Returns a vector (Matrix with 1 column) containing `n_rows` rows, all initialized to the value 0.
+     * Returns a statically-typed column vector containing `n_rows` rows, all initialized to the value 0.
      * 
      * For vectors with static row count equaling `Dynamic` only.
      * 
      * @param n_rows Number of rows in the new matrix. Must be positive or equal `Dynamic`
      */
-    static Matrix Zero(int32_t n_rows) {
-        static_assert(static_rows == Dynamic, "Zero vector creation is for row count equaling Dynamic only");
-        static_assert(static_cols == 1, "Zero-vector creation is for vectors only (i.e. static column count is 1)");
+    static Matrix<T, COLUMN_VECTOR> Zero(int32_t n_rows) {
+        static_assert(static_type == COLUMN_VECTOR, "Zero-vector creation is for vectors only (i.e. static column count is 1)");
         assert((n_rows > 0) && "Constant vector creation: Rows must be positive");
         
-        Matrix<T, Dynamic, 1> result(n_rows, 1);
+        Matrix<T, COLUMN_VECTOR> result(n_rows);
 
         for (int32_t r = 0; r < n_rows; r++) {
             result(r, 0) = 0;
@@ -605,7 +607,7 @@ public:
      * @return reference to the element at position r.
      */
     T& operator() (int r) {
-        static_assert(static_cols == 1, "Single-index access operator is for column vectors only");
+        static_assert(static_type == COLUMN_VECTOR, "Single-index access operator is for column vectors only");
         assert(0 <= r && r < rows() && "Access for vector: Row out of bounds");
         return contents[contents_index_at(r,0)];
     }
@@ -619,7 +621,7 @@ public:
      * @return constant reference to the element at position r.
      */
     const T& operator() (int r) const {
-        static_assert(static_cols == 1, "Single-index access operator is for column vectors only");
+        static_assert(static_type == COLUMN_VECTOR, "Single-index access operator is for column vectors only");
         assert(0 <= r && r < rows() && "Access for vector: Row out of bounds");
         return contents[contents_index_at(r,0)];
     }
@@ -628,30 +630,29 @@ public:
     /**
      * Assigns the contents of `other` to this matrix.
      * 
-     * `other` must have the same static dimensions as this matrix.
-     * There is strict comparison between positive static dimensions and `Dynamic`.
+     * `other` must have the same static type as this matrix.
      * 
      * @param other other matrix to assign to
      * @return reference to this matrix after the assignment
      */
-    Matrix& operator=(const Matrix<T, static_rows, static_cols>& other) {
+    Matrix& operator=(const Matrix<T, static_type>& other) {
         
         //No self-assignment check: Reallocation only occurs if dimensions are different.
 
         // Reallocate if dimensions differ
-        if (dynamic_rows != other.dynamic_rows ||
-            dynamic_cols != other.dynamic_cols) {
+        if (n_rows != other.n_rows ||
+            n_cols != other.n_cols) {
 
             delete[] contents;
 
-            dynamic_rows = other.dynamic_rows;
-            dynamic_cols = other.dynamic_cols;
-            contents = new T[dynamic_rows * dynamic_cols];
+            n_rows = other.n_rows;
+            n_cols = other.n_cols;
+            contents = new T[n_rows * n_cols];
         }
     
 
         // Copy elements
-        for (int i = 0; i < dynamic_rows * dynamic_cols; ++i) {
+        for (int i = 0; i < n_rows * n_cols; ++i) {
             contents[i] = other.contents[i];
         }
 
@@ -663,8 +664,7 @@ public:
     /**
      * Assigns the pointer to `other`'s contents to this matrix.
      * 
-     * `other` must have the same static dimensions as this matrix.
-     * There is strict comparison between positive static dimensions and `Dynamic`.
+     * `other` must have the same static type as this matrix.
      * 
      * @param other other matrix to assign to
      * @return reference to this matrix after the assignment
@@ -674,12 +674,12 @@ public:
             delete[] contents;
 
             contents = other.contents;
-            dynamic_rows = other.dynamic_rows;
-            dynamic_cols = other.dynamic_cols;
+            n_rows = other.n_rows;
+            n_cols = other.n_cols;
 
             other.contents = nullptr;
-            other.dynamic_rows = 0;
-            other.dynamic_cols = 0;
+            other.n_rows = 0;
+            other.n_cols = 0;
         }
         return *this;
     }
@@ -725,10 +725,10 @@ public:
 
     /**
      * Adds `other` to this matrix.
-     * @param other Matrix to add to this matrix. Must match this matrix's (dynamic) row and column counts.
+     * @param other Matrix to add to this matrix. Must match this matrix's row and column counts.
      */
-    template<typename Tp, int32_t other_static_rows, int32_t other_static_cols>
-    void operator+=(const Matrix<Tp, other_static_rows, other_static_cols>& other) {
+    template<typename Tp, MatrixStaticType other_static_type>
+    void operator+=(const Matrix<Tp, other_static_type>& other) {
         assert(rows() == other.rows() && "+= operator: Row count must match");
         assert(cols() == other.cols() && "+= operator: Column count must match");
 
@@ -778,10 +778,10 @@ public:
 
     /**
      * Subtracts `other` from this matrix.
-     * @param other Matrix to subtract from this matrix. Must match this matrix's (dynamic) row and column counts.
+     * @param other Matrix to subtract from this matrix. Must match this matrix's row and column counts.
      */
-    template<typename Tp, int32_t other_static_rows, int32_t other_static_cols>
-    void operator-=(const Matrix<Tp, other_static_rows, other_static_cols>& other) {
+    template<typename Tp, MatrixStaticType other_static_type>
+    void operator-=(const Matrix<Tp, other_static_type>& other) {
         assert(rows() == other.rows() && "+= operator: Row count must match");
         assert(cols() == other.cols() && "+= operator: Column count must match");
 
@@ -800,7 +800,7 @@ public:
      * @return this matrix * `scalar`
      */
     Matrix operator*(const T& scalar) const {
-        Matrix<T, static_rows, static_cols> result(rows(), cols());
+        Matrix result(rows(), cols());
 
         for (int32_t r = 0; r < rows(); ++r) {
             for (int32_t c = 0; c < cols(); ++c) {
@@ -822,7 +822,7 @@ public:
      * @param scalar The scalar divisor. Cannot be zero.
      * @return A new matrix where each element equals original / scalar.
      */
-    Matrix operator/(T scalar) const {
+    Matrix operator/(const T& scalar) const {
         assert(scalar != 0 && "Matrix scalar division- cannot divide by 0");
 
         Matrix result(rows(), cols());
@@ -867,8 +867,8 @@ public:
      * @param matr matrix to export
      * @return `output_stream` with `matr` inside
      */
-    template<typename CharT, typename Traits, typename Tp, int32_t m_static_rows, int32_t m_static_cols>
-    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Matrix<Tp, m_static_rows, m_static_cols>& matr);
+    template<typename CharT, typename Traits, typename Tp, MatrixStaticType m_static_type>
+    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Matrix<Tp, m_static_type>& matr);
 
     /////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////
@@ -894,10 +894,10 @@ public:
  * @param matrix matrix to subtract from
  * @return `scalar` - `matrix`
  */
-template<typename T, int32_t static_rows, int32_t static_cols>
-Matrix<T, static_rows, static_cols> operator-(const T& scalar, const Matrix<T, static_rows, static_cols>& matrix)
+template<typename T, MatrixStaticType static_type>
+Matrix<T, static_type> operator-(const T& scalar, const Matrix<T, static_type>& matrix)
 {
-    Matrix<T, static_rows, static_cols> result(matrix.rows(), matrix.cols());
+    Matrix<T, static_type> result(matrix.rows(), matrix.cols());
 
     for (int32_t r = 0; r < matrix.rows(); ++r) {
         for (int32_t c = 0; c < matrix.cols(); ++c) {
@@ -919,9 +919,9 @@ Matrix<T, static_rows, static_cols> operator-(const T& scalar, const Matrix<T, s
  * @param matrix matrix to multiply by
  * @return `scalar` * `matrix`
  */
-template<typename T, int32_t static_rows, int32_t static_cols>
-inline Matrix<T, static_rows, static_cols> operator*(const T& scalar, const Matrix<T, static_rows, static_cols>& matrix) {
-    Matrix<T, static_rows, static_cols> result(matrix.rows(), matrix.cols());
+template<typename T, MatrixStaticType static_type>
+inline Matrix<T, static_type> operator*(const T& scalar, const Matrix<T, static_type>& matrix) {
+    Matrix<T, static_type> result(matrix.rows(), matrix.cols());
 
     for (int32_t r = 0; r < matrix.rows(); ++r) {
         for (int32_t c = 0; c < matrix.cols(); ++c) {
@@ -939,16 +939,21 @@ inline Matrix<T, static_rows, static_cols> operator*(const T& scalar, const Matr
  *
  * Performs standard matrix multiplication.
  * The number of columns of this matrix must equal the number of rows of the other matrix.
+ * 
+ * The output's static type is always a matrix.
+ * 
+ * NOTE! Eigen Lite does not support implicit element-wise multiplication!
+ * To do element-wise multiplication, use `cwiseProduct`.
  *
  * @param lhs Left-hand side of the multiplication
  * @param rhs Right-hand side in the multiplication. Must satisfy `lhs.cols()` == `rhs.rows()`.
  * @return A new matrix containing the matrix multiplication result.
  */
-template<typename T, int32_t lhs_static_rows, int32_t lhs_static_cols, int32_t rhs_static_rows, int32_t rhs_static_cols>
-inline Matrix<T, lhs_static_rows, rhs_static_cols> operator*(const Matrix<T, lhs_static_rows, lhs_static_cols>& lhs, const Matrix<T, rhs_static_rows, rhs_static_cols>& rhs) {
+template<typename T, MatrixStaticType lhs_static_type, MatrixStaticType rhs_static_type>
+inline Matrix<T, MATRIX> operator*(const Matrix<T, lhs_static_type>& lhs, const Matrix<T, rhs_static_type>& rhs) {
     assert(lhs.cols() == rhs.rows() && "Matrix multiplication requires left-hand side's columns to equal right side's number of rows");
 
-    Matrix<T, lhs_static_rows, rhs_static_cols> result(lhs.rows(), rhs.cols());
+    Matrix<T, MATRIX> result(lhs.rows(), rhs.cols());
 
     for (int i = 0; i < lhs.rows(); ++i) {
         for (int j = 0; j < rhs.cols(); ++j) {
@@ -963,21 +968,9 @@ inline Matrix<T, lhs_static_rows, rhs_static_cols> operator*(const Matrix<T, lhs
 
 
 
-template<typename T>
-inline Matrix<T, Dynamic, Dynamic> operator*(const Matrix<T, Dynamic, 1>& lhs, const Matrix<T, 1, Dynamic>& rhs) {
-    Matrix<T, Dynamic, Dynamic> result(lhs.rows(), rhs.cols());
-    for (int i = 0; i < lhs.rows(); ++i)
-        for (int j = 0; j < rhs.cols(); ++j)
-            result(i,j) = lhs(i) * rhs(0,j);
 
-    return result;
-}
-
-
-
-
-template<typename CharT, typename Traits, typename T, int32_t static_rows, int32_t static_cols>
-std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Matrix<T, static_rows, static_cols>& matr) {
+template<typename CharT, typename Traits, typename Tp, MatrixStaticType m_static_type>
+std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Matrix<Tp, m_static_type>& matr) {
     // Determine the width needed for each column
     int col_width = 0;
 
@@ -1016,18 +1009,20 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
 
 
 /**
- * A matrix, of type double, with dynamically allocated row/column counts.
+ * A statically typed matrix, of type double.
  * 
  * Imitates Eigen's `MatrixXd`.
  */
-typedef Matrix<double, Dynamic, Dynamic> MatrixXd;
+typedef Matrix<double, MATRIX> MatrixXd;
 
 /**
- * A vector, of type double, with dynamically allocated row count.
+ * A statically typed vector, of type double.
  * 
  * Imitates Eigen's `VectorXd`.
  */
-typedef Matrix<double, Dynamic, 1> VectorXd;
+typedef Matrix<double, COLUMN_VECTOR> VectorXd;
+
+
 
 
 }

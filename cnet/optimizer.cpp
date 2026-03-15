@@ -5,17 +5,12 @@
 #include <thread>
 #include <vector>
 
-#include <iostream>
-
 #pragma once
 
 
 namespace CNet {
 
-/**
- * Gives the minimum of the two arguments
- */
-#define min(a, b) ( (a) < (b) ? (a) : (b) )
+    
 
 
 /**
@@ -423,12 +418,11 @@ private:
                 ? intermediate_outputs[l-1].post_activation
                 : initial_input;
 
-
             // Weight gradient = delta * previous activation transposed
-            Eigen::MatrixXd prev_post_activ_transpose = previous_post_activation.transpose();
-            Eigen::MatrixXd dW_temp = delta * prev_post_activ_transpose;
-             ^ this line returns a VectorXd when it should return a MatrixXd. Something with static dimensions or the transpose.
-            output.dW[l] = dW_temp;
+            
+            output.dW[l] = delta * previous_post_activation.transpose();
+            // ^ EigenLite v1: this line returns a VectorXd when it should return a MatrixXd. Something with static dimensions or the transpose.
+                
             // Bias gradient = delta
             output.dB[l] = delta;
 

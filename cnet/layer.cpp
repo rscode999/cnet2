@@ -1,9 +1,5 @@
 #include "activation_function.cpp"
 
-#include <memory>
-
-#include <Eigen/Core>
-
 #pragma once
 
 
@@ -11,7 +7,7 @@ namespace CNet {
 
 
 
-    
+
 /**
  * Utility struct for storing pre-activation results, post-activation results, and weight matrices
  * at each step of the forward process.
@@ -88,8 +84,8 @@ public:
         assert((output_dimension>0 && "Output vector's dimension must be positive"));
 
         //Initialize weights and biases to random values on [-1, 1]
-        weights = Eigen::MatrixXd::Random(output_dimension, input_dimension);
-        biases  = Eigen::VectorXd::Random(output_dimension, 1, Eigen::VectorTag{});
+        weights = Eigen::MatrixXd::Random(output_dimension, input_dimension, initialization_scale_factor, Eigen::MatrixTag{});
+        biases  = Eigen::VectorXd::Random(output_dimension, initialization_scale_factor, Eigen::VectorTag{});
         //Scale them
         weights = weights * initialization_scale_factor;
         biases = biases * initialization_scale_factor;

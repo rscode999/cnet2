@@ -91,10 +91,10 @@ public:
         constexpr double epsilon = 1e-12;
 
         // Clamp predictions to [epsilon, 1.0]
-        Eigen::VectorXd clipped_preds = predictions.max(epsilon).min(1.0);
+        Eigen::VectorXd clipped_preds = predictions.max(1.0).min(epsilon);
 
         // Cross-entropy loss: -sum(actual * log(predictions))
-        double loss = -(actuals * clipped_preds.log()).sum();
+        double loss = -actuals.cwiseProduct(clipped_preds.log()).sum(); //-(actuals * clipped_preds.log()).sum();
 
         return loss;
     }

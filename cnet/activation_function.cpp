@@ -1,10 +1,8 @@
-#include <cmath>
 #include <memory>
 #include <set>
 #include <string>
 
 #include <Eigen/Core>
-
 
 #pragma once
 
@@ -202,7 +200,14 @@ public:
      */
     Eigen::VectorXd compute_derivative(const Eigen::VectorXd& input) const override {
         Eigen::VectorXd sig = compute(input);
-        return sig * (1.0 - sig);
+        return sig.cwiseProduct(1.0 - sig);
+        /*
+        This line sig.cwiseProduct(1.0 - sig); caused an assertion failure in the line:
+        delta = delta.cwiseProduct(previous_activation->compute_derivative(previous_layer_output));
+        of optimizer.cpp
+
+        Cause- Eigen supports implicit element-wise multiplications, but Eigen Lite does not.
+        */
     }
 
     std::string name() const override {
