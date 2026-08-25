@@ -4,8 +4,10 @@
 #include "cast_exceptions.hpp"
 #include "network_component.hpp"
 
-#include <string>
 #include <xtensor/containers/xarray.hpp>
+
+#include <string>
+
 
 namespace cast {
 
@@ -51,7 +53,7 @@ public:
     /**
      * @return the calculator's identifying string. Defaults to "loss_calculator" if not overridden by an implementing class.
      */
-    virtual std::string name() {
+    virtual std::string to_string() const {
         return "loss_calculator";
     }
 
@@ -71,7 +73,24 @@ public:
      */
     virtual xt::xarray<double> compute_gradient(xt::xarray<double> predicted, xt::xarray<double> expected) const = 0;
 
+    /**
+    * Exports `calc` to the output stream `output_stream`, returning `output_stream` with `calc`'s information inside.
+    * @param output_stream stream to put the loss calculator into
+    * @param calc LossCalculator object to export
+    * @return `output_stream` with `calc` inserted
+    */
+    template<typename CharT, typename Traits>
+    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const LossCalculator& calc);
 };
+
+template<typename CharT, typename Traits>
+std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const LossCalculator& calc) {
+    std::string calc_str = calc.to_string();
+
+    output_stream << std::basic_string<CharT>(calc_str.begin(), calc_str.end());
+    return output_stream;
+}
+
 
 
 
@@ -103,7 +122,7 @@ public:
     /**
      * @return the string "mean_squared_error"
      */
-    std::string name() override {
+    std::string to_string() const override {
         return "mean_squared_error";
     }
 

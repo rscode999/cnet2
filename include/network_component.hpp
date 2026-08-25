@@ -2,10 +2,12 @@
 #define CAST_NETWORK_COMPONENT_
 
 #include "cast_exceptions.hpp"
+#include "cast_iomanip.hpp"
 
 #include <xtensor/containers/xarray.hpp>
 
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -75,22 +77,25 @@ public:
     * Checks if this component has a non-negative branch ID (that is, it was assigned). If not, throws `cast::assertion_error`.
     */
     void assert_branch_id_assigned() {
-        str_assert(branch_id_ >= 0, name() + " has no assigned branch ID; got " + std::to_string(branch_id_));
+        str_assert(branch_id_ >= 0, to_string() + " has no assigned branch ID; got " + std::to_string(branch_id_));
     }
 
 
     /**
-    * @return the branch ID that this component is assigned to. If unassigned, returns `UNASSIGNED_BRANCH_ID`.
+    * @return the branch ID number that this component is assigned to, converted to a string. If unassigned, returns "UNASSIGNED".
     */
-    int32_t branch_id() const {
-        return branch_id_;
+    std::string branch_id() const {
+        if(branch_id_ == UNASSIGNED_BRANCH_ID) {
+            return "UNASSIGNED";
+        }
+        return std::to_string(branch_id_);
     }
 
 
     /**
-     * @return identifying string of this component. Defaults to "network_component" if not overridden
+     * @return information about the component, including type and parameters. Defaults to "network_component" if not overridden
      */
-    virtual std::string name() const {
+    virtual std::string to_string() const {
         return "network_component";
     }
 
@@ -127,6 +132,29 @@ public:
     }
 
 
+    /**
+    * Returns all predecessor and successor branch IDs, in a string.
+    *
+    * The string is in the format "predecessors: {index}, branch {branch ID}..., successors: {index}, branch {branch ID}".
+    *
+    * Largely for debugging.
+    * @return predecessor and successor branches
+    */
+    std::string connections_to_string() const {
+        std::string out = "predecessors: {";
+        for(std::pair<int32_t, int32_t> pred : predecessors_) {
+            out += std::to_string(pred.second) + ", branch " + std::to_string(pred.first) + "; ";
+        }
+        out += "}, successors: {";
+        for(std::pair<int32_t, int32_t> succ : successors_) {
+            out += std::to_string(succ.second) + ", branch " + std::to_string(succ.first) + "; ";
+        }
+        out += "}";
+        
+        return out;
+    }
+
+
 
     /**
      * Returns the results of this operation on `inputs`.
@@ -152,7 +180,37 @@ public:
      * Properly destroys a network component
      */
     virtual ~NetworkComponent() = default;
+
+
+
+    /**
+    * Exports `component` to the output stream `output_stream`, returning `output_stream` with `component`'s information inside.
+    * @param output_stream stream to put the component into
+    * @param component NetworkComponent object to export
+    * @return `output_stream` with `component` inserted
+    */
+    template<typename CharT, typename Traits>
+    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const NetworkComponent& component);
 };
+
+
+template<typename CharT, typename Traits>
+std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const NetworkComponent& component) {
+    std::string component_str = component.to_string();
+    std::string component_connections_str = component.connections_to_string();
+    std::string component_adjacency_str = component.branch_id();
+
+    output_stream << std::basic_string<CharT>(component_str.begin(), component_str.end());
+
+    //display branch
+    output_stream << ", branch " <<  std::basic_string<CharT>(component_adjacency_str.begin(), component_adjacency_str.end());
+
+    //export more if in verbose mode
+    if(output_stream.iword(get_display_idx()) == 1) {
+        output_stream << "\n" << "    " << std::basic_string<CharT>(component_connections_str.begin(), component_connections_str.end());
+    }
+    return output_stream;
+}
 
 
 

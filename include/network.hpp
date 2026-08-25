@@ -243,6 +243,8 @@ public:
     /**
     * Adds `op` to the end of branch `branch_id`.
     *
+    * An operator is a layer or an activation function.
+    *
     * If `branch_id` is negative, at least the total number of branches used so far, or corresponds to a branch that has been merged, 
     * this method throws `cast::bad_component_addition`.
     * @param new_operator operator to add to a branch
@@ -654,7 +656,31 @@ public:
         optimizer_->step(zero_grad);
     }
 
+
+    /**
+    * Exports `network` to the output stream `output_stream`, returning `output_stream` with `network`'s information inside.
+    * @param output_stream stream to put the network into
+    * @param network Network object to export
+    * @return `output_stream` with `network` inserted
+    */
+    template<typename CharT, typename Traits>
+    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Network& network);
 };
+
+template<typename CharT, typename Traits>
+std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Network& network) {
+    output_stream << "Network\n";
+    output_stream << "Loss calculator: " << *network.loss_calc_ << "\n";
+    output_stream << "Optimizer: " << *network.optimizer_ << "\n";
+    
+    for (int32_t i = 0; i < (int32_t)network.components_.size(); i++) {
+        if(!network.components_[i]) {
+            throw assertion_error("Network component " + std::to_string(i) + " is nullptr");
+        }
+        output_stream << "(" << i << "): " << *network.components_[i] << "\n";
+    }
+    return output_stream;
+}
 
 
 

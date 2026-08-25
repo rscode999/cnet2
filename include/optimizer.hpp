@@ -4,11 +4,11 @@
 
 #include "layer.hpp"
 
-#include <initializer_list>
 #include <xtensor/generators/xbuilder.hpp>
 #include <xtensor/io/xio.hpp>
 
 #include <iostream>
+#include <initializer_list>
 #include <memory>
 #include <vector>
 
@@ -34,6 +34,14 @@ public:
     * @return deep copy of the optimizer's pointer. The new pointer cannot be used to modify the original.
     */
     virtual std::shared_ptr<Optimizer> shared_ptr_deep_copy() const = 0;
+
+    /**
+    * @return string representation of the optimizer object and its hyperparameters.
+    * If not overridden, returns "optimizer".
+    */
+    virtual std::string to_string() const {
+        return "optimizer";
+    }
 
     /**
     * @return optimizer's hyperparameters
@@ -64,26 +72,44 @@ public:
     * @param zero_grad whether to set each operator's gradients to 0, after computing the optimization pass
     */
     virtual void step(bool zero_grad) = 0;
+
+
+    /**
+    * Exports `optimizer` to the output stream `output_stream`, returning `output_stream` with `optimizer`'s information inside.
+    * @param output_stream stream to put the optimizer into
+    * @param optimizer Optimizer object to export
+    * @return `output_stream` with `optimizer` inserted
+    */
+    template<typename CharT, typename Traits>
+    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Optimizer& optimizer);
 };
+
+template<typename CharT, typename Traits>
+std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Optimizer& optimizer) {
+    std::string optimizer_str = optimizer.to_string();
+    output_stream << std::basic_string<CharT>(optimizer_str.begin(), optimizer_str.end());
+    return output_stream;
+}
+
 
 
 
 /**
-* Stochastic Gradient Descent optimizer
+* Stochastic Gradient Descent optimizer with momentum
 */
 class SGD : public Optimizer {
 private:
 
     /**
-    * Operators that this optimizer improves
+    * Components that this optimizer improves
     */
-    std::vector<std::shared_ptr<NetworkComponent>> operators_;
+    std::vector<std::shared_ptr<NetworkComponent>> components_;
 
     /**
     * Velocities for each parameter, for each operator.
     * Index `i` corresponds to the velocities for operator `i`.
     *
-    * The velocity list for each non-Layer is empty.
+    * The velocities for each non-Layer is the empty list.
     */
     std::vector<std::vector<xt::xarray<double>>> velocities_;
 
@@ -98,7 +124,7 @@ public:
         LearningRate = 0,
 
         /**
-        * Momentum
+        * Momentum coefficient
         */
         MomentumCoefficient = 1
     };
@@ -122,6 +148,11 @@ public:
     */
     std::shared_ptr<Optimizer> shared_ptr_deep_copy() const override {
         return std::make_shared<SGD>(*this);
+    }
+
+
+    std::string to_string() const override {
+        return "SGD (learning rate " + std::to_string(hyperparams_[LearningRate]) + ", momentum coefficient " + std::to_string(hyperparams_[MomentumCoefficient]) + ")";
     }
 
     
@@ -154,7 +185,7 @@ public:
 
     
     /**
-    * Loads the SGD optimizer with all information needed for training, taken from `operators`.
+    * Loads the SGD optimizer with layer velocities taken from `operators`.
     * @param operators operators to optimize. Non-empty, and no element can be `nullptr`
     */
     void initialize(std::vector<std::shared_ptr<NetworkComponent>>& operators) override {
@@ -162,7 +193,7 @@ public:
 
         velocities_.clear(); // Clear out any old state if re-initializing
 
-        operators_ = operators;
+        components_ = operators;
 
         for (const std::shared_ptr<NetworkComponent>& op : operators) {
             std::vector<xt::xarray<double>> layer_vels;
@@ -172,8 +203,8 @@ public:
             // Check if this operator is a subclass of Layer
             std::shared_ptr<Layer> layer = std::dynamic_pointer_cast<Layer>(op);
             
+            // It is a layer: initialize velocities for its parameters
             if (layer != nullptr) {
-                // It is a layer: initialize velocities for its parameters
                 for (const xt::xarray<double>& param : layer->parameters()) {
                     layer_vels.push_back(xt::zeros_like(param));
                 }
@@ -193,9 +224,9 @@ public:
     void step(bool zero_grad = true) override {
         str_assert(velocities_.size() > 0, "The optimizer must have been initialized prior to calling this method");
 
-        for (int32_t l = 0; l < (int32_t)operators_.size(); l++) {
+        for (int32_t l = 0; l < (int32_t)components_.size(); l++) {
             // Check if this operator is a subclass of Layer. If not, skip it
-            auto current_layer = std::dynamic_pointer_cast<Layer>(operators_[l]);
+            auto current_layer = std::dynamic_pointer_cast<Layer>(components_[l]);
             if(current_layer == nullptr) {
                 continue;
             }

@@ -50,14 +50,19 @@ public:
     }
 
 
-
-    virtual std::string name() const override {
-        return "branch";
-    }
-
-
+    /**
+    * @return number of branches after the Splitter's operation, including the Splitter's own branch. Always at least 2.
+    */
     int32_t branch_count() const {
         return branch_count_;
+    }
+    
+
+    /**
+    * @return the string "splitter ({branch count of this splitter object})"
+    */
+    virtual std::string to_string() const override {
+        return "splitter {" + std::to_string(branch_count_) + "}";
     }
 
 
@@ -148,8 +153,8 @@ public:
         throw not_implemented("Does not exist");
     }
 
-};
 
+};
 
 
 
@@ -226,10 +231,20 @@ public:
 
 
     /**
-    * @return the string "combiner"
+    * @return the string "combiner ({branch indices combined} -> {branch of combiner})"
     */
-    std::string name() const override {
-        return "combiner";
+    std::string to_string() const override {
+        std::string header = "combiner {";
+        std::string combined_branches = "";
+        //Guarantee of at least one branch to combine
+        for (int32_t i = 0; i < (int32_t)branch_indices_.size() - 1; i++) {
+            combined_branches += std::to_string(branch_indices_[i]) + ", ";
+        }
+        combined_branches += std::to_string(branch_indices_[branch_indices_.size() - 1]) + "}"; 
+
+        std::string footer = " -> " + std::to_string(branch_id_);
+
+        return header + combined_branches + footer;
     }
 
 
@@ -304,6 +319,7 @@ public:
     std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> unused) override {
         throw not_implemented("Does not exist");
     }
+
 };
 
 

@@ -10,8 +10,6 @@
 #include <xtensor/generators/xrandom.hpp>
 #include <xtensor-blas/xlinalg.hpp>
 
-#include <cassert>
-
 namespace cast {
 
 
@@ -55,10 +53,6 @@ protected:
 
 public:
 
-    virtual std::string name() const override {
-        return "layer";
-    }
-
     /**
      * @return parameters (weights, biases, ...) of this layer, as a std::vector of Tensors
      */
@@ -72,7 +66,9 @@ public:
     std::vector<xt::xarray<double>>& gradients() {
         return gradients_;
     }
+
 };
+
 
 
 
@@ -187,10 +183,10 @@ public:
 
 
     /**
-    * @return the string "linear1d"
+    * @return the string "linear1d, ({input dimension}, {output dimension})"
     */
-    std::string name() const override {
-        return "linear1d";
+    std::string to_string() const override {
+        return "linear1d (" + std::to_string(input_vector_dimension_) + ", " + std::to_string(output_vector_dimension_) + ")";
     }
 
 
@@ -243,6 +239,7 @@ public:
         // Return the gradient vector for the previous layer wrapped in a Tensor
         return {d_input};
     }
+
 };
 
 

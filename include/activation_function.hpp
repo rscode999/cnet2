@@ -25,13 +25,6 @@ public:
     */
     ActivationFunction() {
     }
-
-    /**
-    * @return the string "activation_function"
-    */
-    virtual std::string name() const override {
-        return "activation_function";
-    }
 };
 
 
@@ -61,14 +54,16 @@ public:
     /**
     * @return the string "sigmoid"
     */
-    std::string name() const override {
+    std::string to_string() const override {
         return "sigmoid";
     }
 
 
     
     /**
-    * Returns the Sigmoid activation function applied to each parameter in `inputs`
+    * Returns the Sigmoid activation function applied to each parameter in `inputs`.
+    *
+    * sigmoid(x) = 1 / (1 + exp(-x)) for a scalar value x.
     * @param inputs list of values to compute. Non-empty
     * @return sigmoid(x) for each element of `inputs`
     */
@@ -90,7 +85,7 @@ public:
     * Returns the derivative of Sigmoid applied to each parameter of `upstream_gradients`.
     * YOU MUST HAVE PREVIOUSLY USED THIS OBJECT'S `compute` METHOD TO GET A RESULT.
     * @param upstream_gradients list of values to compute. Non-empty
-    * @return d(Sigmoid(x))/dx for each element x of `inputs`
+    * @return d(Sigmoid(x))/dx for each element x of `upstream_gradients`
     */
     std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> upstream_gradients) override {
         str_assert(upstream_gradients.size() > 0, "Upstream gradients in Sigmoid backwards pass must be non-empty");
@@ -110,8 +105,73 @@ public:
         
         return output;
     }
+
+    
 };
 
+
+
+
+/**
+* Rectified Linear Unit (ReLU) function
+*/
+class Relu : public ActivationFunction {
+public:
+    /**
+    * @return deep pointer copy of this Relu object
+    */
+    std::shared_ptr<NetworkComponent> shared_ptr_deep_copy() const override {
+        return std::make_shared<Relu>(*this);
+    }
+
+
+    /**
+    * @return the string "relu"
+    */
+    std::string to_string() const override {
+        return "relu";
+    }
+
+
+    /**
+    * Returns the ReLU activation function applied to each parameter in `inputs`
+    *
+    * ReLU(x) = max(0, x) for a scalar x
+    * @param inputs list of values to compute. Non-empty
+    * @return ReLU(x) for each element of `inputs`
+    */
+    std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> inputs) override {
+        str_assert(inputs.size() > 0, "Input vector must be non-empty");
+
+        std::vector<xt::xarray<double>> output = {};
+        for(xt::xarray<double> params : inputs) {
+            output.push_back(xt::maximum(params, 0.0));
+        }
+
+        return output;
+    }
+
+
+    /**
+    * Returns the derivative of ReLU applied to each parameter of `upstream_gradients`.
+    *
+    * d(ReLU(x))/dx = 0 if x is negative, otherwise 1
+    * @param upstream_gradients list of values to compute. Non-empty
+    * @return d(ReLU(x))/dx for each element x of `upstream_gradients`
+    */
+    std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> upstream_gradients) override {
+        str_assert(upstream_gradients.size() > 0, "Upstream gradients in ReLU backwards pass must be non-empty");
+
+        std::vector<xt::xarray<double>> output;
+        output.reserve(upstream_gradients.size());
+
+        for(xt::xarray<double> grad : upstream_gradients) {
+            output.push_back(xt::where(grad >= 0.0, 1.0, 0.0));
+        }
+        
+        return output;
+    }
+};
 
 
 
