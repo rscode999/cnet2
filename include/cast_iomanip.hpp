@@ -18,7 +18,7 @@ inline int get_display_idx() {
 }
 
 /**
-* Sets `output_stream` to display verbose information about networks, returning a reference to `output_stream`.
+* Sets `output_stream` to display extra information about networks, returning a reference to `output_stream`.
 * @param output_stream stream to set
 * @return `output_stream` set to verbose
 */
@@ -29,7 +29,7 @@ inline std::basic_ostream<CharT, Traits>& verbose(std::basic_ostream<CharT, Trai
 }
 
 /**
-* Disables `output_stream` printing detailed information about networks, returning a reference to `output_stream`.
+* Stops `output_stream` from printing detailed information about networks, returning a reference to `output_stream`.
 * @param output_stream stream to set
 * @return `output_stream` set to no-verbose
 */

@@ -97,9 +97,9 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
 /**
  * Calculates Mean Squared Error (MSE) loss.
  *
- * For each element in the output, MSE subtracts corresponding elements of the predicted and actual loss,
+ * For each element in the output, MSE subtracts corresponding elements of the predicted and expected values,
  * then squares the difference. The loss is the sum of the squared differences, divided by the number of 
- * elements in the input, divided by 2.
+ * elements in the predicted value, divided by 2.
  */
 class MeanSquaredError : public LossCalculator {
 public:

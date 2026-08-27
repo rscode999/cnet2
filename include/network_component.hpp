@@ -4,6 +4,7 @@
 #include "cast_exceptions.hpp"
 #include "cast_iomanip.hpp"
 
+#include <source_location>
 #include <xtensor/containers/xarray.hpp>
 
 #include <cstdint>
@@ -55,14 +56,18 @@ protected:
     int32_t branch_id_ = UNASSIGNED_BRANCH_ID;
 
     /**
-    * Number of inputs allowed by this operation
+    * If `condition` is false, throws a `cast::shape_error` with message `error_message`.
+    *
+    * Will always do its check, regardless of if `NDEBUG` is defined.
+    * @param condition condition to check
+    * @param failure_message error message to display if `condition` is false
+    * @param assert_location location where the assertion was enforced
     */
-    int32_t n_inputs_ = ARBITARY_INPUT_COUNT;
-
-    /**
-    * Number of outputs given by this operation
-    */
-    int32_t n_outputs_ = ARBITARY_OUTPUT_COUNT;
+    void assert_tensor_shape(bool condition, std::string failure_message = "", std::source_location assert_location = std::source_location::current()) {
+        if(!condition) {
+            throw shape_error(failure_message, assert_location);
+        }
+    }
 
 public:
     friend class Network;
@@ -82,37 +87,22 @@ public:
 
 
     /**
-    * @return the branch ID number that this component is assigned to, converted to a string. If unassigned, returns "UNASSIGNED".
+    * @return the branch ID number that this component is assigned to.
+    * If unassigned, throws the `cast::unassigned_branch_error` exception.
     */
-    std::string branch_id() const {
-        if(branch_id_ == UNASSIGNED_BRANCH_ID) {
-            return "UNASSIGNED";
+    int32_t branch_id() const {
+        if(branch_id_ < 0) {
+            throw unassigned_branch_error("Branch ID is " + (branch_id_==UNASSIGNED_BRANCH_ID ? "UNASSIGNED" : std::to_string((int32_t)branch_id_)));
         }
-        return std::to_string(branch_id_);
+        return branch_id_;
     }
 
 
     /**
-     * @return information about the component, including type and parameters. Defaults to "network_component" if not overridden
+     * @return information about the component, including type and parameters
      */
     virtual std::string to_string() const {
         return "network_component";
-    }
-
-
-    /**
-    * @return number of input tensors used by this operator. Equals `ARBITARY_INPUT_COUNT` if unlimited tensors are accepted.
-    */
-    int32_t n_inputs() const {
-        return n_inputs_;
-    }
-
-
-    /**
-    * @return number of output tensors given by this operator. Equals `ARBITARY_OUTPUT_COUNT` if unlimited tensors can be given.
-    */
-    int32_t n_outputs() const {
-        return n_outputs_;
     }
 
 
@@ -197,16 +187,17 @@ public:
 template<typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const NetworkComponent& component) {
     std::string component_str = component.to_string();
-    std::string component_connections_str = component.connections_to_string();
-    std::string component_adjacency_str = component.branch_id();
+    std::string component_branch_str = std::to_string(component.branch_id());
 
+    //export component as string (converted to character type of output stream)
     output_stream << std::basic_string<CharT>(component_str.begin(), component_str.end());
 
     //display branch
-    output_stream << ", branch " <<  std::basic_string<CharT>(component_adjacency_str.begin(), component_adjacency_str.end());
+    output_stream << ", branch " <<  std::basic_string<CharT>(component_branch_str.begin(), component_branch_str.end());
 
-    //export more if in verbose mode
+    //export more if the output stream is in verbose mode
     if(output_stream.iword(get_display_idx()) == 1) {
+        std::string component_connections_str = component.connections_to_string();
         output_stream << "\n" << "    " << std::basic_string<CharT>(component_connections_str.begin(), component_connections_str.end());
     }
     return output_stream;

@@ -24,9 +24,15 @@ namespace cast {
 class Optimizer {
 protected:
     /**
+    * Network components that this optimizer improves
+    */
+    std::vector<std::shared_ptr<NetworkComponent>> components_;
+
+    /**
     * Stores hyperparameters of the optimizer
     */
     std::vector<double> hyperparams_;
+
 
 public:
 
@@ -36,8 +42,7 @@ public:
     virtual std::shared_ptr<Optimizer> shared_ptr_deep_copy() const = 0;
 
     /**
-    * @return string representation of the optimizer object and its hyperparameters.
-    * If not overridden, returns "optimizer".
+    * @return string representation of the optimizer object and its hyperparameters
     */
     virtual std::string to_string() const {
         return "optimizer";
@@ -52,7 +57,7 @@ public:
 
     /**
     * Sets the hyperparameters to `new_hyperparams`.
-    * @param new_hyperparams hyperparameters to set
+    * @param new_hyperparams hyperparameters to set. Length and preconditions for each hyperparameter depend on the optimizer subclass
     */
     virtual void set_hyperparameters(std::initializer_list<double> new_hyperparams) = 0;
 
@@ -63,12 +68,8 @@ public:
     virtual void initialize(std::vector<std::shared_ptr<NetworkComponent>>& operators) = 0;
 
     /**
-    * Updates the parameters of each Layer object in `operators` using each layer's stored gradients.
+    * Updates the parameters of each Layer object in the optimizer's stored components using each layer's stored gradients.
     * Non-Layers are unchanged.
-    *
-    * Mutates `operators`.
-    *
-    * @param operators network operators to update
     * @param zero_grad whether to set each operator's gradients to 0, after computing the optimization pass
     */
     virtual void step(bool zero_grad) = 0;
@@ -101,15 +102,10 @@ class SGD : public Optimizer {
 private:
 
     /**
-    * Components that this optimizer improves
-    */
-    std::vector<std::shared_ptr<NetworkComponent>> components_;
-
-    /**
-    * Velocities for each parameter, for each operator.
-    * Index `i` corresponds to the velocities for operator `i`.
+    * Velocities for each parameter, for each component.
+    * Index `i` corresponds to the velocities for component `i`.
     *
-    * The velocities for each non-Layer is the empty list.
+    * The velocities for each non-Layer is the empty list, {}.
     */
     std::vector<std::vector<xt::xarray<double>>> velocities_;
 
@@ -150,9 +146,11 @@ public:
         return std::make_shared<SGD>(*this);
     }
 
-
+    /**
+    * @return the string "sgd (learning rate {learning rate}, momentum coefficient {momentum coefficient})"
+    */
     std::string to_string() const override {
-        return "SGD (learning rate " + std::to_string(hyperparams_[LearningRate]) + ", momentum coefficient " + std::to_string(hyperparams_[MomentumCoefficient]) + ")";
+        return "sgd (learning rate " + std::to_string(hyperparams_[LearningRate]) + ", momentum coefficient " + std::to_string(hyperparams_[MomentumCoefficient]) + ")";
     }
 
     
@@ -164,6 +162,15 @@ public:
     }
 
     /**
+    * Sets this SGD optimizer's learning rate to `new_learning_rate`.
+    * @param new_learning_rate learning rate to set. Positive.
+    */
+    void set_learning_rate(double new_learning_rate) {
+        str_assert(new_learning_rate > 0, "New learning rate must be positive- received " + std::to_string(new_learning_rate));
+        hyperparams_[LearningRate] = new_learning_rate;
+    }
+
+    /**
     * @return momentum coefficient used by this optimizer
     */
     double momentum_coefficient() const {
@@ -171,8 +178,17 @@ public:
     }
 
     /**
+    * Sets this SGD optimizer's momentum coefficient to `new_momentum_coeff`.
+    * @param new_momentum_coeff momentum coefficient to set. Non-negative
+    */
+    void set_momentum_coefficient(double new_momentum_coeff) {
+        str_assert(new_momentum_coeff >= 0, "New momentum coeff must be positive- received " + std::to_string(new_momentum_coeff));
+        hyperparams_[MomentumCoefficient] = new_momentum_coeff;
+    }
+
+    /**
     * Sets the optimizer's learning rate to `new_hyperparams[0]`, and the momentum coefficient to `new_hyperparams[1]`.
-    * @param new_hyperparams new hyperparameters. Of length 2. Learning rate is positive, momentum coeff is non-negative
+    * @param new_hyperparams new hyperparameters. Of length 2. Index 0 is positive, index 1 is non-negative
     */
     void set_hyperparameters(std::initializer_list<double> new_hyperparams) override {
         std::vector<double> new_hyperparams_vec = new_hyperparams;
@@ -185,17 +201,17 @@ public:
 
     
     /**
-    * Loads the SGD optimizer with layer velocities taken from `operators`.
-    * @param operators operators to optimize. Non-empty, and no element can be `nullptr`
+    * Loads the SGD optimizer with layer velocities taken from `components`.
+    * @param components network components to optimize. Non-empty, and no element can be `nullptr`
     */
-    void initialize(std::vector<std::shared_ptr<NetworkComponent>>& operators) override {
-        str_assert(operators.size() > 0, "Operator list must be non-empty");
+    void initialize(std::vector<std::shared_ptr<NetworkComponent>>& components) override {
+        str_assert(components.size() > 0, "Operator list must be non-empty");
 
         velocities_.clear(); // Clear out any old state if re-initializing
 
-        components_ = operators;
+        components_ = components;
 
-        for (const std::shared_ptr<NetworkComponent>& op : operators) {
+        for (const std::shared_ptr<NetworkComponent>& op : components) {
             std::vector<xt::xarray<double>> layer_vels;
 
             str_assert(op != nullptr, "All operators in initialization cannot be nullptr");

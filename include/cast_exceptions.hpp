@@ -10,14 +10,11 @@ namespace cast {
 
 
 
-    
+
 /**
- * Thrown to indicate that a network, or a component of a network,
- * is not in the correct configuration for an action.
- * 
- * Inherits from `std::exception`
- */
-class invalid_config : public std::exception {
+* Thrown when a branch ID is requested, but the branch ID is not properly assigned
+*/
+class unassigned_branch_error : public std::exception {
 private:
     /**
      * Error message set by the user
@@ -32,8 +29,8 @@ public:
      * @param error_message message to be displayed on throw
      * @param throw_location place where the exception was thrown
      */
-    explicit invalid_config(std::string error_message = "", std::source_location throw_location = std::source_location::current()) : std::exception() {
-        message_ = error_message + ", file " + throw_location.file_name() + ", line " + std::to_string(throw_location.line());
+    explicit unassigned_branch_error(std::string error_message = "", std::source_location throw_location = std::source_location::current()) : std::exception() {
+        message_ = error_message + " (file " + throw_location.file_name() + ", line " + std::to_string(throw_location.line()) + ", in " + throw_location.function_name() + ")";
     }
 
     /**
@@ -44,6 +41,105 @@ public:
     }
 };
 
+
+    
+/**
+ * Thrown to indicate that a network is not in the correct configuration for an action.
+ * 
+ * Inherits from `std::exception`
+ */
+class bad_network_config : public std::exception {
+private:
+    /**
+     * Error message set by the user
+     */
+    std::string message_;
+
+public:
+    /**
+     * Creates a new exception object with the message `error_message`, thrown at the location `throw_location`.
+     *
+     * The error message is: `error_message` + file of `throw_location` + line number of `throw_location`
+     * @param error_message message to be displayed on throw
+     * @param throw_location place where the exception was thrown
+     */
+    explicit bad_network_config(std::string error_message = "", std::source_location throw_location = std::source_location::current()) : std::exception() {
+        message_ = error_message + " (file " + throw_location.file_name() + ", line " + std::to_string(throw_location.line()) + ", in " + throw_location.function_name() + ")";
+    }
+
+    /**
+     * @return the exception object's error message
+     */
+    const char* what() const noexcept override {
+        return message_.c_str();
+    }
+};
+
+
+/**
+ * Thrown to indicate that the network's enable check failed.
+ * 
+ * Inherits from `cast::bad_network_config`
+ */
+class enable_error : public std::exception {
+private:
+    /**
+     * Error message set by the user
+     */
+    std::string message_;
+
+public:
+    /**
+     * Creates a new exception object with the message `error_message`, thrown at the location `throw_location`.
+     *
+     * The error message is: `error_message` + file of `throw_location` + line number of `throw_location`
+     * @param error_message message to be displayed on throw
+     * @param throw_location place where the exception was thrown
+     */
+    explicit enable_error(std::string error_message = "", std::source_location throw_location = std::source_location::current()) : std::exception() {
+        message_ = error_message + " (file " + throw_location.file_name() + ", line " + std::to_string(throw_location.line()) + ", in " + throw_location.function_name() + ")";
+    }
+
+    /**
+     * @return the exception object's error message
+     */
+    const char* what() const noexcept override {
+        return message_.c_str();
+    }
+};
+
+
+/**
+ * Thrown to indicate that a network has dimension incompatibilities.
+ * 
+ * Inherits from `std::exception`
+ */
+class shape_error : public std::exception {
+private:
+    /**
+     * Error message set by the user
+     */
+    std::string message_;
+
+public:
+    /**
+     * Creates a new exception object with the message `error_message`, thrown at the location `throw_location`.
+     *
+     * The error message is: `error_message` + file of `throw_location` + line number of `throw_location`
+     * @param error_message message to be displayed on throw
+     * @param throw_location place where the exception was thrown
+     */
+    explicit shape_error(std::string error_message = "", std::source_location throw_location = std::source_location::current()) : std::exception() {
+        message_ = error_message + " (file " + throw_location.file_name() + ", line " + std::to_string(throw_location.line()) + ", in " + throw_location.function_name() + ")";
+    }
+
+    /**
+     * @return the exception object's error message
+     */
+    const char* what() const noexcept override {
+        return message_.c_str();
+    }
+};
 
 
 /**
@@ -67,7 +163,7 @@ public:
      * @param throw_location place where the exception was thrown
      */
     explicit bad_component_addition(std::string error_message = "", std::source_location throw_location = std::source_location::current()) : std::exception() {
-        message_ = error_message + ", file " + throw_location.file_name() + ", line " + std::to_string(throw_location.line());
+        message_ = error_message + " (file " + throw_location.file_name() + ", line " + std::to_string(throw_location.line()) + ", in " + throw_location.function_name() + ")";
     }
 
     /**
@@ -123,12 +219,12 @@ public:
     /**
      * Creates a new exception object with the message `error_message`, thrown at the location `throw_location`.
      *
-     * The error message is: `error_message` + file of `throw_location` + line number of `throw_location`
+     * The error message is: `error_message` + (file of `throw_location` + line number of `throw_location`)
      * @param error_message message to be displayed on throw
      * @param throw_location place where the exception was thrown
      */
     explicit assertion_error(std::string error_message, std::source_location throw_location = std::source_location::current()) : std::exception() {
-        full_error_message_ = error_message + ", file " + throw_location.file_name() + ", line " + std::to_string(throw_location.line()) + ", in " + throw_location.function_name();
+        full_error_message_ = error_message + " (file " + throw_location.file_name() + ", line " + std::to_string(throw_location.line()) + ", in " + throw_location.function_name() + ")";
     }
 
     /**

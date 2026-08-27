@@ -9,7 +9,7 @@ using namespace cast;
 
 
 
-void test_xor() {
+void test_xor_train() {
   Network net = Network();
 
   //(2,4) -> (4,1)
@@ -62,7 +62,7 @@ void test_xor() {
 
 
 
-void test_branches() {
+void test_splitters() {
     /*
     architecture:
     l1 > sigmoid > branch 0  > l1 (3) > branch (5)     > sigmoid (6)
@@ -76,11 +76,11 @@ void test_branches() {
 
     net.add_operator(make_shared<Linear1d>(2, 3));
     net.add_operator(make_shared<Sigmoid>());
-    net.add_operator(make_shared<Splitter>(2));
+    net.add_splitter(2);
     net.add_operator(make_shared<Linear1d>(3, 4));
 
     net.add_operator(make_shared<Linear1d>(3, 4), 1);
-    net.add_operator(make_shared<Splitter>(2));
+    net.add_splitter(2);
     net.add_operator(make_shared<Sigmoid>(), 0);
     net.add_operator(make_shared<Sigmoid>(), 2);
     
@@ -105,11 +105,11 @@ void test_combiners_simple() {
 
     net.add_operator(make_shared<Linear1d>(2, 3));
     net.add_operator(make_shared<Sigmoid>());
-    net.add_operator(make_shared<Splitter>(2));
+    net.add_splitter(2);
     net.add_operator(make_shared<Linear1d>(3, 4));
 
     net.add_operator(make_shared<Linear1d>(3, 4), 1);
-    net.add_operator(shared_ptr<Combiner>(new Combiner{1}));
+    net.add_combiner({1});
 
     net.enable();
 }
@@ -132,13 +132,13 @@ void test_combiners_compound() {
 
     net.add_operator(make_shared<Linear1d>(2, 3));
 
-    net.add_operator(make_shared<Splitter>(3));
+    net.add_splitter(3);
     net.add_operator(make_shared<Sigmoid>());
     net.add_operator(make_shared<Linear1d>(2, 3), 1);
     net.add_operator(make_shared<Sigmoid>(), 2);
 
-    net.add_operator(shared_ptr<Combiner>(new Combiner{2}), 1);
-    net.add_operator(shared_ptr<Combiner>(new Combiner{1}));
+    net.add_combiner({2}, 1);
+    net.add_combiner({1});
 
     net.enable();
 }
@@ -160,14 +160,14 @@ void test_combiners_other_branches() {
 
     net.add_operator(make_shared<Linear1d>(2, 3));
 
-    net.add_operator(make_shared<Splitter>(3));
+    net.add_splitter(3);
     net.add_operator(make_shared<Sigmoid>());
     net.add_operator(make_shared<Linear1d>(2, 3), 1);
     net.add_operator(make_shared<Sigmoid>(), 2);
 
-    net.add_operator(shared_ptr<Combiner>(new Combiner{0}), 1);
+    net.add_combiner({0}, 1);
     net.add_operator(make_shared<Linear1d>(2, 3), 2);
-    net.add_operator(shared_ptr<Combiner>(new Combiner{2}), 1);
+    net.add_combiner({2}, 1);
 
     net.enable();
 }
@@ -188,11 +188,11 @@ void test_branch_forward() {
 
     net.add_operator(make_shared<Linear1d>(2, 3));
 
-    net.add_operator(make_shared<Splitter>(3));
+    net.add_splitter(3);
     net.add_operator(make_shared<Sigmoid>(), 0);
     net.add_operator(make_shared<Sigmoid>(), 1);
     net.add_operator(make_shared<Sigmoid>(), 2);
-    net.add_operator(make_shared<Combiner>(initializer_list<int32_t>{1, 2}));
+    net.add_combiner({1, 2});
 
     net.enable();
 
@@ -217,17 +217,17 @@ void test_branch_train_complex() {
 
     net.add_operator(make_shared<Linear1d>(2, 4));
 
-    net.add_operator(make_shared<Splitter>(2));
+    net.add_splitter(2);
     net.add_operator(make_shared<Linear1d>(4, 1));
-    net.add_operator(make_shared<Splitter>(2), 1);
+    net.add_splitter(2, 1);
     net.add_operator(make_shared<Linear1d>(4, 1), 1);
     
     net.add_operator(make_shared<Linear1d>(4, 1), 2);
     net.add_operator(make_shared<Sigmoid>(), 1);
     net.add_operator(make_shared<Sigmoid>(), 2);
-    net.add_combiner(std::shared_ptr<Combiner>(new Combiner{2}), 1);
+    net.add_combiner({2}, 1);
 
-    net.add_combiner(std::shared_ptr<Combiner>(new Combiner{1}), 0);
+    net.add_combiner({1}, 0);
   
     net.enable();
 
@@ -270,5 +270,5 @@ void test_branch_train_complex() {
 
 
 int main() {
-    test_xor();
+    test_xor_train();
 }

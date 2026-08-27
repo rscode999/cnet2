@@ -16,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <queue>
+#include <stack>
 #include <string>
 
 
@@ -75,7 +76,7 @@ private:
     * Throws `bad_component_addition` if `combine_branch_ids` and `branch_id` are incompatible with each other or the current network configuration.
     * Called when a network component is added.
     *
-    * The network must not be enabled: otherwise, throws `cast::invalid_config`.
+    * The network must not be enabled: otherwise, throws `cast::bad_network_config`.
     *
     * `branch_id` must be positive and less than the number of total branches used.
     *
@@ -91,12 +92,17 @@ private:
     void check_component_indices_(std::initializer_list<int32_t> combine_branch_ids, int32_t branch_id, std::source_location check_location = std::source_location::current()) {
         //Enable check
         if(enabled_) {
-            throw invalid_config("Network must not be enabled to add components", check_location);
+            throw bad_network_config("Network must not be enabled to add components", check_location);
         }
         
         //Stop check early if there are no leaf nodes (that is, the component is the first one added)
         if (leaf_node_indices_.empty()) {
             return;
+        }
+
+        //Overflow check
+        if((int32_t)components_.size() < 0 || (int32_t)components_.size() >= 2000000000) { //2 billion
+            throw std::out_of_range("Cannot add more than 2 billion operators to the network");
         }
 
         int32_t leaf_node_indices_size = static_cast<int32_t>(leaf_node_indices_.size());
@@ -127,7 +133,7 @@ private:
             //Size bounds
             if (combine_index < 0 || combine_index >= leaf_node_indices_size) {
                 throw bad_component_addition(
-                    "Combine indices index " + std::to_string(pos) + " (" + std::to_string(combine_index) +
+                    "Branch IDs to combine index " + std::to_string(pos) + " (" + std::to_string(combine_index) +
                     ") must be non-negative and less than the total number of branches created (" + std::to_string(leaf_node_indices_size) + ")",
                     check_location
                 );
@@ -135,8 +141,8 @@ private:
             //Cannot add to a branch that has been combined
             if (leaf_node_indices_[combine_index] == NETWORK_BRANCH_COMBINED) {
                 throw bad_component_addition(
-                    "Combine indices index" + std::to_string(pos) + " (" + std::to_string(combine_index) +
-                    ") points to a branch that has already been combined",
+                    "Branch IDs to combine index " + std::to_string(pos) + " (" + std::to_string(combine_index) +
+                    ") was already combined",
                     check_location
                 );
             }
@@ -168,7 +174,7 @@ public:
     *
     * The output's length is equal to the total number of branches used in the network so far (but the branches may not necessarily still exist).
     * 
-    * Index `i` equals the constant `NETWORK_BRANCH_COMBINED` if branch `i` has been combined with another branch, and thus no longer exists.
+    * Index `i` equals the constant `NETWORK_BRANCH_COMBINED` (a negative value) if branch `i` has been combined with another branch, and thus no longer exists.
     * @return indices of leaf nodes
     */
     std::vector<int32_t> active_branch_indices() const {
@@ -180,14 +186,14 @@ public:
     /**
     * @return whether the network is ready for training and optimization
     */
-    bool enabled() const {
+    bool is_enabled() const {
         return enabled_;
     }
     
 
     
     /**
-    * Adds a combiner, merging the branch IDs given in `branch_indices_to_combine`, to branch `branch_id`.
+    * Adds a combiner, merging the branch IDs given in `branch_ids_to_combine`, to branch `branch_id`.
     *
     * If `branch_id` is negative, at least the total number of branches used so far, or corresponds to a branch that has been merged, 
     * this method throws `cast::bad_component_addition`.
@@ -196,11 +202,13 @@ public:
     * has already been merged, or equals `branch_id` (combiners cannot merge their own branch).
     * A Combiner cannot be the first component added to a network.
     *
-    * @param branch_indices_to_combine list of branch IDs to merge
-    * @param branch_id branch to add the new splitter to
+    * To use this method, the network cannot be enabled.
+    * @param branch_ids_to_combine list of branch IDs to merge. Non-empty
+    * @param branch_id branch to add the new combiner to
     * @param loc location where this method is called (for debugging purposes)
     */
     void add_combiner(std::initializer_list<int32_t> branch_ids_to_combine, int32_t branch_id = 0, std::source_location loc = std::source_location::current()) {
+        str_assert(branch_ids_to_combine.size() > 0, "Branch IDs to combine must be non-empty");
         check_component_indices_(branch_ids_to_combine, branch_id, loc);
 
         //First operator loaded: Not allowed
@@ -247,19 +255,21 @@ public:
     *
     * If `branch_id` is negative, at least the total number of branches used so far, or corresponds to a branch that has been merged, 
     * this method throws `cast::bad_component_addition`.
-    * @param new_operator operator to add to a branch
-    * @param branch_id branch to add the new splitter to
+    *
+    * To use this method, the network cannot be enabled.
+    * @param op operator to add to a branch
+    * @param branch_id branch to add the new operator to
     * @param loc location where this method is called (for debugging purposes)
     */
-    void add_operator(std::shared_ptr<Operator> new_operator, int32_t branch_id = 0, std::source_location loc = std::source_location::current()) {
+    void add_operator(std::shared_ptr<Operator> op, int32_t branch_id = 0, std::source_location loc = std::source_location::current()) {
         check_component_indices_({}, branch_id, loc);
 
         //Make a deep copy of the operator
-        std::shared_ptr<NetworkComponent> op = new_operator->shared_ptr_deep_copy();
+        std::shared_ptr<NetworkComponent> new_operator = op->shared_ptr_deep_copy();
 
         //Register the operator
-        components_.push_back(op);
-        op->branch_id_ = branch_id;
+        components_.push_back(new_operator);
+        new_operator->branch_id_ = branch_id;
 
         //First operator loaded: Add the current node as an output
         if(leaf_node_indices_.size() == 0) {
@@ -268,8 +278,8 @@ public:
         }
 
         // Set predecessor
-        op->predecessors_.clear();
-        op->predecessors_[components_[leaf_node_indices_[branch_id]]->branch_id_] = leaf_node_indices_[branch_id];
+        new_operator->predecessors_.clear();
+        new_operator->predecessors_[components_[leaf_node_indices_[branch_id]]->branch_id_] = leaf_node_indices_[branch_id];
 
         // Register recently added node as the current branch leaf node's successor
         components_[leaf_node_indices_[branch_id]]->successors_[branch_id] = (int32_t)components_.size() - 1;
@@ -283,6 +293,8 @@ public:
     *
     * If `branch_id` is negative, at least the total number of branches used so far, or corresponds to a branch that has been merged, 
     * this method throws `cast::bad_component_addition`.
+    *
+    * To use this method, the network cannot be enabled.
     * @param branch_count number of branches to split execution into. At least 2.
     * @param branch_id branch to add the new splitter to
     * @param loc location where this method is called (for debugging purposes)
@@ -323,43 +335,90 @@ public:
 
     /**
      * Sets this network's loss calculator to `calc`.
+     *
+     * To use this method, the network cannot be enabled.
      * @param calc new loss calculator to use. Non-null
      */
     void set_loss_calculator(std::shared_ptr<LossCalculator> calc) {
         str_assert(calc != nullptr, "New loss calculator must be non-null");
+        //Enable check
+        if(enabled_) {
+            throw bad_network_config("Network cannot be enabled to set the loss calculator");
+        }
 
         //Reset the loss calculator if it exists
         if(loss_calc_) {
             loss_calc_.reset();
         }
-
-        //Create deep pointer of the new calculator
-        loss_calc_ = calc->shared_ptr_deep_copy();
+        loss_calc_ = calc;
     }
 
 
 
     /**
      * Sets this network's optimizer to `optim`.
+     *
+     * The pointer to the optimizer can be manipulated from outside the network.
+     *
+     * To use this method, the network cannot be enabled.
      * @param optim new optimizer to use. Non-null
      */
     void set_optimizer(std::shared_ptr<Optimizer> optim) {
         str_assert(optim != nullptr, "New optimizer must be non-null");
+        //Enable check
+        if(enabled_) {
+            throw bad_network_config("Network cannot be enabled to set the optimizer");
+        }
 
         //Reset optimizer if it exists
         if(optimizer_) {
             optimizer_.reset();
         }
-
-        //Create deep pointer of the new optimizer
-        optimizer_ = optim->shared_ptr_deep_copy();
+        optimizer_ = optim;
     }
 
+
+    void set_optimizer_hyperparams(std::initializer_list<double> new_hyperparams) {
+        if(!optimizer_) {
+            throw bad_network_config("The network has no optimizer");
+        }
+        optimizer_->set_hyperparameters(new_hyperparams);
+    }
+
+    /*
+    //DFS to check all control paths.
+    void control_paths(int32_t index_to_check) {
+        std::stack<int32_t> next_indices_to_check;
+        
+        for(std::pair<int32_t, int32_t> succ : components_[index_to_check]->successors()) {
+            next_indices_to_check.push(succ.second);
+        }
+
+        while(next_indices_to_check.size() > 0) {
+            int32_t dim_check_idx = next_indices_to_check.top();
+
+            //Check if the successor's input shape is compatible with the predecessor's output shape...
+
+            control_paths(dim_check_idx);
+            next_indices_to_check.pop();
+        }
+
+        return;
+    }
+    */
+
+
+    /**
+    * Disables the network. Prevents training and optimization, but allows more components to be added.
+    */
+    void disable() {
+        enabled_ = false;
+    }
 
 
     /**
      * Checks if the network has the necessary components to run. 
-     * If not, throws `invalid_config`. If so, allows training and optimization.
+     * If not, throws `enable_error`. If so, allows training and optimization.
      *
      * Conditions to run:
      * The network must have a loss calculator, optimizer, and at least one component.
@@ -367,74 +426,57 @@ public:
      */
     void enable() {
         if(!loss_calc_) {
-            throw invalid_config("Network needs a defined loss calculator");
+            throw enable_error("Network needs a defined loss calculator");
         }
         if(!optimizer_) {
-            throw invalid_config("Network needs a defined optimizer");
+            throw enable_error("Network needs a defined optimizer");
         }
 
         //Check that the network has operators
         if((int32_t)leaf_node_indices_.size() == 0) {
-            throw invalid_config("Network must have at least one operator");
+            throw enable_error("Network must have at least one operator");
         }
         if(components_.size() == 0) {
-            throw invalid_config("Network must have at least one operator");
+            throw enable_error("Network must have at least one operator");
         }
 
         //Check that the network's first element is not a splitter
         if(std::dynamic_pointer_cast<Splitter>(components_[0]) != nullptr) {
-            throw invalid_config("First operator in the network cannot be a splitter");
+            throw enable_error("First operator in the network cannot be a splitter");
         }
 
         //Check that the network's first component is the input (i.e. has no predecessors)
         if(components_[0]->predecessors_.size() > 0) {
-            throw invalid_config("First operator in the network must be the input");
+            throw enable_error("First operator in the network must be the input");
         }
 
         //Check for single output
-        int32_t output_count = 0;
+        std::vector<int32_t> unmerged_branches = {};
         for(int32_t i = 0; i < (int32_t)leaf_node_indices_.size(); i++) {
             if(leaf_node_indices_[i] != NETWORK_BRANCH_COMBINED) {
-                output_count++;
+                unmerged_branches.push_back(i);
             }
         }
-        if(output_count != 1) {
-            throw invalid_config("Network must have exactly one output");
+        //If there is not exactly 1 unmerged branch, convert all unmerged branch IDs to a string and error
+        if(unmerged_branches.size() != 1) {
+            std::string unmerged_branches_str = "";
+            for(int32_t i = 0; i < (int32_t)unmerged_branches.size() - 1; i++) {
+                unmerged_branches_str += std::to_string(unmerged_branches[i]) + ", ";
+            }
+            unmerged_branches_str += std::to_string(unmerged_branches[unmerged_branches.size()-1]);
+
+            throw enable_error("Network must have exactly one output. Remaining branches: " + unmerged_branches_str);
         }
 
-         //All components have branch IDs assigned to them (idiot check)
-        for (int32_t i = 0; i < (int32_t)components_.size(); i++) {
+        //All control paths are assigned to a branch
+        for(int32_t i = 0; i < (int32_t)components_.size(); i++) {
             try {
-                components_[i]->assert_branch_id_assigned();
+                (void)components_[i]->branch_id();
             }
-            catch(assertion_error& e) {
-                throw invalid_config(std::string(e.what()) + " (component " + std::to_string(i) + ")");
+            catch(unassigned_branch_error& e) {
+                throw enable_error("Invalid branch ID at component index " + std::to_string(i) + ": " + e.what());
             }
         }
-
-        // for(std::shared_ptr<NetworkComponent> op : operators_) {
-        //     std::cout << op->name() << " ";
-        //     std::cout << "predecessors: ";
-        //     for(std::pair<int32_t, int32_t> p : op->predecessors_) {
-        //         std::cout << p.first << ", " << p.second << ";   ";
-        //     }
-        //     std::cout << "\n";
-        // }
-        // std::cout << "\n";
-        // for(std::shared_ptr<NetworkComponent> op : operators_) {
-        //     std::cout << op->name() << " ";
-        //     std::cout << "successors: ";
-        //       for(std::pair<int32_t, int32_t> p : op->successors_) {
-        //         std::cout << p.first << ", " << p.second << ";   ";
-        //     }
-        //     std::cout << std::endl;
-        // }
-        // std::cout << "\n";
-        // std::cout << "LEAF NODE INDICES" << std::endl;
-        // for(int32_t l : leaf_node_indices_) {
-        //     std::cout << l << ", ";
-        // }
-        // std::cout << std::endl;
 
         optimizer_->initialize(components_);
         enabled_ = true;
@@ -451,7 +493,7 @@ public:
      */
     xt::xarray<double> forward(xt::xarray<double> input) {
         if(!enabled_) {
-            throw invalid_config("Must enable the network prior to training");
+            throw bad_network_config("Must enable the network prior to training");
         }
 
         struct Task {
@@ -474,11 +516,11 @@ public:
                 continue;
             }
 
-            std::shared_ptr<NetworkComponent> current_op = components_.at(components_idx);
+            std::shared_ptr<NetworkComponent> current_component = components_.at(components_idx);
             // std::cout << "Executing " << current_op->name() << std::endl;
 
             // Handle splitters: Push all of its successors, including itself, into the execution queue
-            if (std::shared_ptr<Splitter> splitter = std::dynamic_pointer_cast<Splitter>(current_op)) {
+            if (std::shared_ptr<Splitter> splitter = std::dynamic_pointer_cast<Splitter>(current_component)) {
                 std::vector<std::vector<xt::xarray<double>>> branch_output = splitter->compute(current.data, true);
 
                 std::unordered_map<int32_t, int32_t> successors = splitter->successors();
@@ -495,7 +537,7 @@ public:
                 }
             }
             // Handle combiners
-            else if(std::shared_ptr<Combiner> combiner = std::dynamic_pointer_cast<Combiner>(current_op)) {
+            else if(std::shared_ptr<Combiner> combiner = std::dynamic_pointer_cast<Combiner>(current_component)) {
                 std::vector<xt::xarray<double>> combiner_output = combiner->compute(current.data);
                 
                 // Combiner output is non-empty only when all required inputs have arrived
@@ -519,14 +561,22 @@ public:
             }
             // Handle single operator
             else {
-                std::vector<xt::xarray<double>> op_output = current_op->compute(current.data);
+                std::vector<xt::xarray<double>> op_output;
+
+                //Compute the output. If incompatible shapes, re-throw the shape error
+                try {
+                    op_output = current_component->compute(current.data);
+                }
+                catch(shape_error& e) {
+                    throw shape_error("Input to " + current_component->to_string() + " (branch " + std::to_string(current_component->branch_id()) + "): " + e.what());
+                }
 
                 //No successors: Return (this is the single operator with no successors)
-                if(current_op->successors().empty()) {
+                if(current_component->successors().empty()) {
                     return op_output[0];
                 }
 
-                auto const& succs = current_op->successors();
+                auto const& succs = current_component->successors();
                 str_assert(succs.size() == 1, "Operator must have exactly one successor");
 
                 //Push the operator's single successor to the execution queue
@@ -542,9 +592,9 @@ public:
 
 
     /**
-     * Computes the backward pass, initially using `predicted` and `expected`.
+     * Computes the backward pass, beginning with loss between `predicted` and `expected`.
      *
-     * Stores updated gradients inside each operator, for use by the network's optimizer.
+     * Stores updated gradients inside the network layers, for use by the network's optimizer.
      *
      * The network must be enabled to use this method.
      * @param predicted network's prediction for a given input
@@ -552,7 +602,7 @@ public:
      */
     void backward(xt::xarray<double> predicted, xt::xarray<double> expected) {
         if(!enabled_) {
-            throw invalid_config("Must enable the network prior to training");
+            throw bad_network_config("Must enable the network prior to computing backwards pass");
         }
 
         xt::xarray<double> output_loss = loss_calc_->compute_gradient(predicted, expected);
@@ -580,10 +630,10 @@ public:
                 continue;
             }
 
-            std::shared_ptr<NetworkComponent> current_op = components_.at(op_idx);
+            std::shared_ptr<NetworkComponent> current_component = components_.at(op_idx);
 
             // Handle splitters (act like combiners in the backwards pass, collecting inputs)
-            if (std::shared_ptr<Splitter> splitter = std::dynamic_pointer_cast<Splitter>(current_op)) {
+            if (std::shared_ptr<Splitter> splitter = std::dynamic_pointer_cast<Splitter>(current_component)) {
                 std::vector<xt::xarray<double>> branch_grads = splitter->compute_backwards_pass(current.data);
 
                 // Branch output is non-empty only when all required inputs have arrived
@@ -602,7 +652,7 @@ public:
                 }
             }
             // Handle combiners (act like splitters in the backwards pass, distributing gradients)
-            else if (std::shared_ptr<Combiner> combiner = std::dynamic_pointer_cast<Combiner>(current_op)) {
+            else if (std::shared_ptr<Combiner> combiner = std::dynamic_pointer_cast<Combiner>(current_component)) {
                 std::vector<std::vector<xt::xarray<double>>> combiner_outputs = combiner->compute_backwards_pass(current.data, true);
 
                 std::unordered_map<int32_t, int32_t> preds = combiner->predecessors();
@@ -619,9 +669,9 @@ public:
             }
             // Handle single operators
             else {
-                std::vector<xt::xarray<double>> op_output = current_op->compute_backwards_pass(current.data);
+                std::vector<xt::xarray<double>> op_output = current_component->compute_backwards_pass(current.data);
 
-                const std::unordered_map<int32_t, int32_t>& preds = current_op->predecessors();
+                const std::unordered_map<int32_t, int32_t>& preds = current_component->predecessors();
                 if (preds.empty()) {
                     return;
                 }
@@ -640,7 +690,9 @@ public:
 
 
     /**
-     * Runs an optimization pass on the network's layers, using the optimizer and gradients computed from the `backward` method.
+     * Runs an optimization pass on the network's layers.
+     *
+     * Uses the network's stored optimizer and the gradients computed from the `backward` method.
      *
      * To use this method, the network must be enabled.
      *
@@ -650,7 +702,7 @@ public:
      */
     void optimize(bool zero_grad = true) {
         if(!enabled_) {
-            throw invalid_config("Must enable the network prior to optimizing"); 
+            throw bad_network_config("Must enable the network prior to computing optimization pass"); 
         }
 
         optimizer_->step(zero_grad);
@@ -669,15 +721,35 @@ public:
 
 template<typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Network& network) {
-    output_stream << "Network\n";
-    output_stream << "Loss calculator: " << *network.loss_calc_ << "\n";
-    output_stream << "Optimizer: " << *network.optimizer_ << "\n";
-    
+    output_stream << "Network, " << (network.enabled_ ? "enabled" : "disabled") << "\n";
+
+    //Export the loss calculator if it exists
+    output_stream << "Loss calculator: ";
+    if(network.loss_calc_) {
+        output_stream << *network.loss_calc_;
+    }
+    else {
+        output_stream << "(none)";
+    }
+
+    //Export the optimizer if it exists
+    output_stream << "\nOptimizer: ";
+    if(network.optimizer_) {
+        output_stream << *network.optimizer_;
+    }
+    else {
+        output_stream << "(none)";
+    }
+
+    //Export all the layers
+    if(network.components_.size() > 0) {
+        output_stream << "\n";
+    }
     for (int32_t i = 0; i < (int32_t)network.components_.size(); i++) {
         if(!network.components_[i]) {
             throw assertion_error("Network component " + std::to_string(i) + " is nullptr");
         }
-        output_stream << "(" << i << "): " << *network.components_[i] << "\n";
+        output_stream << "Operator " << i << ": " << *network.components_[i] << "\n";
     }
     return output_stream;
 }

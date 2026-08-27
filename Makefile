@@ -8,3 +8,7 @@ XTENSOR_BLAS_PATH='lib/xtensor-blas/include'
 
 c:
 	g++ ${MAIN}  -o ${OUTPUT_EXECUTABLE_NAME} --std=c++20  -I ${XTENSOR_PATH} -I ${XTL_PATH} -I ${XTENSOR_BLAS_PATH}
+
+build:
+	cmake -S . -B build/
+	cmake --build build/

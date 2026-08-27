@@ -1,4 +1,5 @@
 Status: Branched XOR classifier converges!
 
 Remaining tasks:
-- Enforce component input constraints on network forward and backward pass
+- Create github workflow for test, set to run upon pushing to repo
+- DO DOCUMENTATION!!!

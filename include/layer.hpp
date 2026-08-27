@@ -24,17 +24,6 @@ class Layer : public Operator {
 protected:
 
     /**
-     * Rank of the inputs taken by this layer. 1=vector, 2=matrix, 3=3d tensor, etc.
-     */
-    int32_t input_tensor_rank_;
-
-    /**
-     * Rank of the outputs taken by this layer. 1=vector, 2=matrix, 3=3d tensor, etc.
-     */
-    int32_t output_tensor_rank_;
-
-
-    /**
      * Parameters of the layer. Each index has a specialized role (i.e. weight matrix, bias vector)
      */
     std::vector<xt::xarray<double>> parameters_;
@@ -75,8 +64,6 @@ public:
 
 /**
  * Performs a fully-connected dense linear operation on a single 1d vector. Produces a single 1d vector.
- *
- * Index 0 of its parameters is a 2d weight matrix. Index 1 is a 1d bias vector.
  */
 class Linear1d : public Layer {
 private:
@@ -101,7 +88,7 @@ private:
     * Does nothing if `NDEBUG` is defined.
     * @param loc location where this assertion was made
     */
-    void assert_parameter_shape(std::source_location loc = std::source_location::current()) {
+    void assert_parameter_list_preconditions(std::source_location loc = std::source_location::current()) {
         #ifndef NDEBUG
 
         str_assert(parameters_.size() == 2, "Linear1d layer must have two parameters", loc);
@@ -153,14 +140,6 @@ public:
         str_assert(input_dimension > 0, "Input dimension (" + std::to_string(input_dimension) + ") must be positive");
         str_assert(output_dimension > 0, "Output dimension (" + std::to_string(output_dimension) + ") must be positive");
         
-        // Exclusively uses inputs and outputs of rank 1 (vectors).
-        input_tensor_rank_ = 1;
-        output_tensor_rank_ = 1;
-
-        //Exactly one input and one output.
-        n_inputs_ = 1;
-        n_outputs_ = 1;
-        
         // PARAMETERS (weights, biases) - wrapped in Tensor
         parameters_.emplace_back(xt::random::randn<double>({output_dimension, input_dimension}, 0, 1));
         parameters_.emplace_back(xt::random::randn<double>({output_dimension}, 0, 1));
@@ -183,7 +162,7 @@ public:
 
 
     /**
-    * @return the string "linear1d, ({input dimension}, {output dimension})"
+    * @return the string "linear1d ({input dimension}, {output dimension})"
     */
     std::string to_string() const override {
         return "linear1d (" + std::to_string(input_vector_dimension_) + ", " + std::to_string(output_vector_dimension_) + ")";
@@ -194,15 +173,15 @@ public:
     /**
      * Returns the result of the linear forward pass on `input`.
      *
-     * To properly compute, the weights and biases of this layer must be compatible with the preset input and output dimensions of this layer.
+     * If `input`'s single value is not a vector of this layer's input dimension, throws `cast::shape_error`.
      * @param input list containing the layer input. Has exactly 1 element
      * @return forward pass result
      */
     std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> input) override {
         str_assert(input.size() == 1, "Linear1d forward pass computation takes 1 input; received " + std::to_string(input.size()) + " inputs");
-        str_assert(input[0].dimension() == 1, "Linear1d layers require vector (rank 1) inputs; input is of rank " + std::to_string(input[0].dimension()));
-        str_assert(input[0].shape()[0] == input_vector_dimension_, "This layer requires vectors of length " + std::to_string(input_vector_dimension_) + "; received length " + std::to_string(input[0].shape()[0]));
-        assert_parameter_shape();
+        assert_tensor_shape(input[0].dimension() == 1, "Linear1d layers require vector (rank 1) inputs; input is of rank " + std::to_string(input[0].dimension()));
+        assert_tensor_shape(input[0].shape()[0] == input_vector_dimension_, "This layer requires vectors of length " + std::to_string(input_vector_dimension_) + "; received length " + std::to_string(input[0].shape()[0]));
+        assert_parameter_list_preconditions();
 
         prev_inputs_[0] = input[0];
 
@@ -221,7 +200,7 @@ public:
         str_assert(upstream_gradients.size() == 1, "Linear1d backwards operation must have one input; got " + std::to_string(upstream_gradients.size()));
         str_assert(upstream_gradients[0].shape().size() == 1, "Linear1d backwards requires a vector (rank 1)");
         str_assert(upstream_gradients[0].shape()[0] == output_vector_dimension_, "Linear1d backwards requires a vector of size " + std::to_string(output_vector_dimension_) + "; got size " + std::to_string(upstream_gradients[0].shape()[0]));
-        assert_parameter_shape();
+        assert_parameter_list_preconditions();
 
         xt::xarray<double> d_output = upstream_gradients[0];
 
