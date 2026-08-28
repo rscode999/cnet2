@@ -1,14 +1,14 @@
 #ifndef CAST_LAYER_
 #define CAST_LAYER_
 
-#include "cast_exceptions.hpp"
 #include "operator.hpp"
 
-#include <source_location>
-#include <string>
 #include <xtensor/containers/xarray.hpp>
 #include <xtensor/generators/xrandom.hpp>
 #include <xtensor-blas/xlinalg.hpp>
+
+#include <source_location>
+#include <string>
 
 namespace cast {
 
@@ -43,14 +43,14 @@ protected:
 public:
 
     /**
-     * @return parameters (weights, biases, ...) of this layer, as a std::vector of Tensors
+     * @return parameters (weights, biases, ...) of this layer
      */
     std::vector<xt::xarray<double>>& parameters() {
         return parameters_;
     }
 
     /**
-     * @return gradients of the weights, biases, etc. of this layer, as a std::vector of Tensors
+     * @return gradients of the weights, biases, etc. of this layer
      */
     std::vector<xt::xarray<double>>& gradients() {
         return gradients_;
@@ -133,8 +133,8 @@ public:
      * Weights and biases are randomly initialized, using a normal distribution with mean 0 and std. dev. 1.
      * Gradients are initialized to zeros.
      * 
-     * @param input_dimension required size of input vectors. Precondition: Positive
-     * @param output_dimension size of output vectors. Precondition: Positive
+     * @param input_dimension required size of input vectors. Positive
+     * @param output_dimension size of output vectors. Positive
      */
     Linear1d(int32_t input_dimension, int32_t output_dimension) : input_vector_dimension_(input_dimension), output_vector_dimension_(output_dimension) {
         str_assert(input_dimension > 0, "Input dimension (" + std::to_string(input_dimension) + ") must be positive");
@@ -193,7 +193,7 @@ public:
 
     /**
      * Returns the gradients with respect to this layer and `upstream_gradients`, updating this layer's gradients.
-     * @param upstream_gradients gradients from this layer's successor. Precondition: contains a single 1d vector
+     * @param upstream_gradients gradients from this layer's successor. Contains a single 1d vector
      * @return dY/dL, where Y is the overall derivative and L is this layer's data, contained in index 0 of the output
      */
     std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> upstream_gradients) override {

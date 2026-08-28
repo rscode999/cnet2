@@ -1,8 +1,8 @@
 #ifndef CAST_NETWORK_COMPONENT_
 #define CAST_NETWORK_COMPONENT_
 
-#include "cast_exceptions.hpp"
-#include "cast_iomanip.hpp"
+#include "../exceptions/cast_exceptions.hpp"
+#include "../ostream_manip.hpp"
 
 #include <source_location>
 #include <xtensor/containers/xarray.hpp>
@@ -187,7 +187,14 @@ public:
 template<typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const NetworkComponent& component) {
     std::string component_str = component.to_string();
-    std::string component_branch_str = std::to_string(component.branch_id());
+
+    std::string component_branch_str;
+    try {
+        component_branch_str = std::to_string(component.branch_id());
+    }
+    catch(unassigned_branch_error& e) {
+        component_branch_str = "UNASSIGNED";
+    }
 
     //export component as string (converted to character type of output stream)
     output_stream << std::basic_string<CharT>(component_str.begin(), component_str.end());

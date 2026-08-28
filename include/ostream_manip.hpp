@@ -1,5 +1,5 @@
-#ifndef CAST_IOMANIP_
-#define CAST_IOMANIP_
+#ifndef CAST_OSTREAM_MANIP_
+#define CAST_OSTREAM_MANIP_
 
 #include <iostream>
 

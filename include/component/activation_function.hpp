@@ -1,7 +1,7 @@
 #ifndef CAST_ACTIVATION_FUNCTION_
 #define CAST_ACTIVATION_FUNCTION_
 
-#include "cast_exceptions.hpp"
+#include "../exceptions/cast_exceptions.hpp"
 #include "network_component.hpp"
 #include "operator.hpp"
 
@@ -115,13 +115,13 @@ public:
 /**
 * Rectified Linear Unit (ReLU) function
 */
-class Relu : public ActivationFunction {
+class ReLU : public ActivationFunction {
 public:
     /**
     * @return deep pointer copy of this Relu object
     */
     std::shared_ptr<NetworkComponent> shared_ptr_deep_copy() const override {
-        return std::make_shared<Relu>(*this);
+        return std::make_shared<ReLU>(*this);
     }
 
 

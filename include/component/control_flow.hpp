@@ -1,7 +1,7 @@
 #ifndef CAST_CONTROL_FLOW_
 #define CAST_CONTROL_FLOW_
 
-#include "cast_exceptions.hpp"
+#include "../exceptions/cast_exceptions.hpp"
 #include "network_component.hpp"
 
 #include <initializer_list>

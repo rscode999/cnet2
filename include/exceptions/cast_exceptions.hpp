@@ -81,7 +81,7 @@ public:
  * 
  * Inherits from `cast::bad_network_config`
  */
-class enable_error : public std::exception {
+class enable_failed_error : public std::exception {
 private:
     /**
      * Error message set by the user
@@ -96,7 +96,7 @@ public:
      * @param error_message message to be displayed on throw
      * @param throw_location place where the exception was thrown
      */
-    explicit enable_error(std::string error_message = "", std::source_location throw_location = std::source_location::current()) : std::exception() {
+    explicit enable_failed_error(std::string error_message = "", std::source_location throw_location = std::source_location::current()) : std::exception() {
         message_ = error_message + " (file " + throw_location.file_name() + ", line " + std::to_string(throw_location.line()) + ", in " + throw_location.function_name() + ")";
     }
 

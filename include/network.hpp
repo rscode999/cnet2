@@ -1,12 +1,10 @@
 #ifndef CAST_NETWORK_
 #define CAST_NETWORK_
 
-
-#include "activation_function.hpp"
-#include "cast_exceptions.hpp"
-#include "control_flow.hpp"
+#include "component/activation_function.hpp"
+#include "component/control_flow.hpp"
+#include "component/layer.hpp"
 #include "loss_calculator.hpp"
-#include "network_component.hpp"
 #include "optimizer.hpp"
 
 #include <xtensor/containers/xarray.hpp>
@@ -378,6 +376,11 @@ public:
     }
 
 
+    /**
+    * Sets the network's optimizer hyperparameters to `new_hyperparams`.
+    *
+    * The preconditions on `new_hyperparams` depend on the optimizer used.
+    */
     void set_optimizer_hyperparams(std::initializer_list<double> new_hyperparams) {
         if(!optimizer_) {
             throw bad_network_config("The network has no optimizer");
@@ -426,28 +429,28 @@ public:
      */
     void enable() {
         if(!loss_calc_) {
-            throw enable_error("Network needs a defined loss calculator");
+            throw enable_failed_error("Network needs a defined loss calculator");
         }
         if(!optimizer_) {
-            throw enable_error("Network needs a defined optimizer");
+            throw enable_failed_error("Network needs a defined optimizer");
         }
 
         //Check that the network has operators
         if((int32_t)leaf_node_indices_.size() == 0) {
-            throw enable_error("Network must have at least one operator");
+            throw enable_failed_error("Network must have at least one operator");
         }
         if(components_.size() == 0) {
-            throw enable_error("Network must have at least one operator");
+            throw enable_failed_error("Network must have at least one operator");
         }
 
         //Check that the network's first element is not a splitter
         if(std::dynamic_pointer_cast<Splitter>(components_[0]) != nullptr) {
-            throw enable_error("First operator in the network cannot be a splitter");
+            throw enable_failed_error("First operator in the network cannot be a splitter");
         }
 
         //Check that the network's first component is the input (i.e. has no predecessors)
         if(components_[0]->predecessors_.size() > 0) {
-            throw enable_error("First operator in the network must be the input");
+            throw enable_failed_error("First operator in the network must be the input");
         }
 
         //Check for single output
@@ -465,7 +468,7 @@ public:
             }
             unmerged_branches_str += std::to_string(unmerged_branches[unmerged_branches.size()-1]);
 
-            throw enable_error("Network must have exactly one output. Remaining branches: " + unmerged_branches_str);
+            throw enable_failed_error("Network must have exactly one output. Remaining branches: " + unmerged_branches_str);
         }
 
         //All control paths are assigned to a branch
@@ -474,7 +477,7 @@ public:
                 (void)components_[i]->branch_id();
             }
             catch(unassigned_branch_error& e) {
-                throw enable_error("Invalid branch ID at component index " + std::to_string(i) + ": " + e.what());
+                throw enable_failed_error("Invalid branch ID at component index " + std::to_string(i) + ": " + e.what());
             }
         }
 
