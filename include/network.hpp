@@ -1,9 +1,9 @@
 #ifndef CAST_NETWORK_
 #define CAST_NETWORK_
 
-#include "component/activation_function.hpp"
-#include "component/control_flow.hpp"
-#include "component/layer.hpp"
+#include "activation_function.hpp"
+#include "control_flow.hpp"
+#include "layer.hpp"
 #include "loss_calculator.hpp"
 #include "optimizer.hpp"
 

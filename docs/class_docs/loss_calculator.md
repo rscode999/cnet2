@@ -1,5 +1,7 @@
 # LossCalculator
 
+[Back to central documentation](../documentation.md)
+
 Computes error between predicted and expected values. Used as the first step in the backwards pass.
 
 LossCalculator objects have no internal state.

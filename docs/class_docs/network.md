@@ -1,5 +1,7 @@
 # Network
 
+[Back to central documentation](../documentation.md)
+
 Trainable predictor with user-defined structure.
 
 ### Constructor

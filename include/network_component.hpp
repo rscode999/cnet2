@@ -1,8 +1,8 @@
 #ifndef CAST_NETWORK_COMPONENT_
 #define CAST_NETWORK_COMPONENT_
 
-#include "../exceptions/cast_exceptions.hpp"
-#include "../ostream_manip.hpp"
+#include "cast_exceptions.hpp"
+#include "ostream_manip.hpp"
 
 #include <source_location>
 #include <xtensor/containers/xarray.hpp>

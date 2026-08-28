@@ -34,3 +34,7 @@ git clone --branch <VERSION TAG> <REPO LINK>
 cd ..
 make
 ```
+
+## Documentation
+
+See the [documentation file](docs/documentation.md).

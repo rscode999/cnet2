@@ -1,11 +1,28 @@
 # NetworkComponent
 
+[Back to central documentation](../documentation.md)
 
+Node in a network.
+
+When added to a Network, a NetworkComponent receives a unique numerical index. The NetworkComponent stores one or more predecessor indices, and one or more successor indices.
+
+NetworkComponents are capable of creating deep pointer copies of themselves, so outside users cannot modify a class' private pointers.
+
+Subclasses:
+* [Operator](operator.md)
+    * [ActivationFunction](activation_function.md)
+    * [Layer](layer.md)
+* [Splitter, Combiner](control_flow.md)
+
+---
+---
+---
 
 ### Constructor
 
 Each subclass of `NetworkComponent` has its own constructor.
 
+---
 
 ### Getters
 

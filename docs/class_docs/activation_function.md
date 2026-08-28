@@ -1,5 +1,7 @@
 # ActivationFunction
 
+[Back to central documentation](../documentation.md)
+
 Network component that computes an element-wise function for all of its inputs.
 
 All activation function objects have constructors that take no parameters.

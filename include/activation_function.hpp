@@ -1,7 +1,7 @@
 #ifndef CAST_ACTIVATION_FUNCTION_
 #define CAST_ACTIVATION_FUNCTION_
 
-#include "../exceptions/cast_exceptions.hpp"
+#include "cast_exceptions.hpp"
 #include "network_component.hpp"
 #include "operator.hpp"
 

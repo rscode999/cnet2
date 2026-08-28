@@ -1,8 +1,7 @@
 #ifndef CAST_LOSS_CALCULATOR_
 #define CAST_LOSS_CALCULATOR_
 
-#include "exceptions/cast_exceptions.hpp"
-#include "component/network_component.hpp"
+#include "cast_exceptions.hpp"
 
 #include <xtensor/containers/xarray.hpp>
 

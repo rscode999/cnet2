@@ -1,5 +1,9 @@
 # Optimizer
 
+[Back to central documentation](../documentation.md)
+
+Improves the weights of a network's layers.
+
 ## Shared Virtual Methods
 
 ### Getters

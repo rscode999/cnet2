@@ -1,5 +1,7 @@
 # Output Stream Manipulators
 
+[Back to central documentation](../documentation.md)
+
 Special functions that change the behavior of output streams.
 
 #### verbose

@@ -1,6 +1,10 @@
 # Layer
 
+[Back to central documentation](../documentation.md)
+
 Contains trainable weights. Only Layers are affected by optimization passes.
+
+Subclass of `Operator`.
 
 ## Shared Virtual Methods
 

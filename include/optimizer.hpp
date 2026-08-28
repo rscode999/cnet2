@@ -2,7 +2,7 @@
 #define CAST_OPTIMIZER_
 
 
-#include "component/layer.hpp"
+#include "layer.hpp"
 
 #include <xtensor/generators/xbuilder.hpp>
 #include <xtensor/io/xio.hpp>
