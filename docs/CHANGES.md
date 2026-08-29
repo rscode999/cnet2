@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.10.0
+*In Progress*
+
+- Decision to use sequential component addition is finalized.
+    - *Rationale:* Implementing PyTorch-like method definitions requires two objects: a proxy object that the user creates, and a network-internal object that stores the weights. In the case where an operator is created multiple times, each operator, as well as the proxy object, must be stored within the network. Having multiple types of objects adds unnecessary complexity. The framework matching CNet's style of network creation negates the small gains in flexibility.
+
 ## 0.9.0
 *17 August 2026*
 
@@ -23,7 +29,7 @@ Full implementation of branched network topologies.
 Overhaul of network creation.
 
 - Sequential layer addition. Branches are user-added.
-    - Rationale: PyTorch-style custom network definition didn't work. Operators go out of scope when the `forward` method is called, so the network cannot access the operators in the backward pass.
+    - *Rationale:* PyTorch-style custom network definition didn't work. Operators go out of scope when the `forward` method is called, so the network cannot access the operators in the backward pass.
     - Each layer is stored in a std::vector. Layers track their predecessor and successor index upon addition.
     - Branches are special layers with multiple predecessors or successors.
 - Tensor objects (as used in v0.5) are no longer used. The user's data storage is the xt::xarray.

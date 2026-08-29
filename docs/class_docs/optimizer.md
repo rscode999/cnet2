@@ -76,7 +76,7 @@ The new pointer cannot be used to modify the original.
 
 Updates the parameters of each Layer object in the optimizer's components, which are given in the `initialize` method.
 
-This method uses each layer's stored gradients
+This method uses each layer's stored gradients.
 
 Any component that is not a subclass of `Layer` is unchanged.
 

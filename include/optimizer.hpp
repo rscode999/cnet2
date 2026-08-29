@@ -258,7 +258,7 @@ public:
     /**
     * Updates `operators` using SGD. Any non-layer (i.e. operators that are not subclasses of `Layer`) are ignored.
     *
-    * This method must be called after using `initialize`. The operators cannot have been modified since calling `initialize`.
+    * This method must be called after the optimizer has been initialized.
     * @param zero_grad whether to set each operator's gradients to 0, after computing the optimization pass
     */
     void step(bool zero_grad = true) override {

@@ -13,6 +13,7 @@ using namespace cast;
 
 
 int main() {
+
     Network net;
 
     net.add_operator(make_shared<Linear1d>(2, 4));
@@ -48,7 +49,7 @@ int main() {
           xt::xarray<double> prediction = net.forward(inputs[i]);
           loss += mse_loss->compute(prediction, expected_outputs[i]);
           net.backward(prediction, expected_outputs[i]);
-          net.optimize();
+          optim->step();
       }
 
       if(e % 100 == 0) {

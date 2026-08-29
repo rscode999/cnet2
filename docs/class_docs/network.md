@@ -4,6 +4,14 @@
 
 Trainable predictor with user-defined structure.
 
+Components (activation functions, layers, branching structure...) are added one at a time.
+
+After building the desired architecture, the network must be enabled through the `enable` method to train it.
+To be enabled, a network must have a loss calculator, optimizer, and at least one layer.
+The `disable` method allows the network to be modified again.
+
+A network can have at most 2 billion components.
+
 ---
 ---
 ---
@@ -14,7 +22,7 @@ Trainable predictor with user-defined structure.
 
 Creates a new, empty network.
 
-The new network has no components, loss calculator, or optimizer.
+The new network is not enabled, with no components, loss calculator, or optimizer.
 
 ---
 
@@ -203,7 +211,7 @@ in the optimizer's `set_hyperparameters` method.
 
 **Exceptions**
 
-* `cast::bad_network_config`: Thrown if the network has no optimizer.
+* `cast::bad_network_config`: If the network has no optimizer.
 
 ---
 
@@ -228,7 +236,7 @@ To use this method, the network must be enabled.
 **Exceptions**
 
 * `cast::bad_network_config`: If the network is not enabled.
-* `cast::shape_error`: If input shapes are incompatible during computation.
+* `cast::shape_error`: If input shapes are incompatible between successive network components.
 * `std::runtime_error`: If the forward pass finishes without reaching an output node.
 
 ---

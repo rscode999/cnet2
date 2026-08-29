@@ -2,6 +2,7 @@
 #define CAST_NETWORK_
 
 #include "activation_function.hpp"
+#include "cast_exceptions.hpp"
 #include "control_flow.hpp"
 #include "layer.hpp"
 #include "loss_calculator.hpp"
@@ -34,6 +35,8 @@ const int32_t NETWORK_BRANCH_COMBINED = -256;
 /**
  * Neural network with trainable weights.
  * Components (i.e. layers, activation functions) are added to the network individually.
+ *
+ * Networks have a maximum of 2 billion components. Attempting to add more causes a `std::out_of_range` exception.
  */
 class Network {
 private:
@@ -399,27 +402,6 @@ public:
         optimizer_->set_hyperparameters(new_hyperparams);
     }
 
-    /*
-    //DFS to check all control paths.
-    void control_paths(int32_t index_to_check) {
-        std::stack<int32_t> next_indices_to_check;
-        
-        for(std::pair<int32_t, int32_t> succ : components_[index_to_check]->successors()) {
-            next_indices_to_check.push(succ.second);
-        }
-
-        while(next_indices_to_check.size() > 0) {
-            int32_t dim_check_idx = next_indices_to_check.top();
-
-            //Check if the successor's input shape is compatible with the predecessor's output shape...
-
-            control_paths(dim_check_idx);
-            next_indices_to_check.pop();
-        }
-
-        return;
-    }
-    */
 
 
     /**
@@ -433,6 +415,8 @@ public:
     /**
      * Checks if the network has the necessary components to run. 
      * If not, throws `enable_error`. If so, allows training and optimization.
+     *
+     * If successful, this method initializes the stored optimizer.
      *
      * Conditions to run:
      * The network must have a loss calculator, optimizer, and at least one component.
@@ -624,6 +608,9 @@ public:
         if(!enabled_) {
             throw bad_network_config("Must enable the network prior to computing backwards pass");
         }
+        if(!loss_calc_) {
+            throw bad_network_config("INTERNAL ERROR- No loss calculator defined");
+        }
 
         xt::xarray<double> output_loss = loss_calc_->compute_gradient(predicted, expected);
 
@@ -723,6 +710,9 @@ public:
     void optimize(bool zero_grad = true) {
         if(!enabled_) {
             throw bad_network_config("Must enable the network prior to computing optimization pass"); 
+        }
+        if(!optimizer_) {
+            throw bad_network_config("INTERNAL ERROR- No optimizer defined");
         }
 
         optimizer_->step(zero_grad);
