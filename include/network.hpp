@@ -159,13 +159,17 @@ private:
 
 public:
     /**
-     * Creates a new network
+     * Creates an empty network. The new network is disabled.
      */
     Network() : enabled_(false) {      
     };
 
 
-
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    //GETTERS
 
     /**
     * Returns the 0-based indices of the ends of each branch in the internal component storage.
@@ -187,7 +191,14 @@ public:
     bool is_enabled() const {
         return enabled_;
     }
-    
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    //SETTERS
 
     
     /**
@@ -486,6 +497,12 @@ public:
     }
 
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    //METHODS
+
 
     /**
      * Returns the result of the network's forward pass on `input`.
@@ -541,7 +558,7 @@ public:
             }
             // Handle combiners
             else if(std::shared_ptr<Combiner> combiner = std::dynamic_pointer_cast<Combiner>(current_component)) {
-                std::vector<xt::xarray<double>> combiner_output = combiner->compute(current.data);
+                std::vector<xt::xarray<double>> combiner_output = combiner->forward(current.data);
                 
                 // Combiner output is non-empty only when all required inputs have arrived
                 if(!combiner_output.empty()) {
@@ -568,7 +585,7 @@ public:
 
                 //Compute the output. If incompatible shapes, re-throw the shape error
                 try {
-                    op_output = current_component->compute(current.data);
+                    op_output = current_component->forward(current.data);
                 }
                 catch(shape_error& e) {
                     throw shape_error("Input to " + current_component->to_string() + " (branch " + std::to_string(current_component->branch_id()) + "): " + e.what());
@@ -637,7 +654,7 @@ public:
 
             // Handle splitters (act like combiners in the backwards pass, collecting inputs)
             if (std::shared_ptr<Splitter> splitter = std::dynamic_pointer_cast<Splitter>(current_component)) {
-                std::vector<xt::xarray<double>> branch_grads = splitter->compute_backwards_pass(current.data);
+                std::vector<xt::xarray<double>> branch_grads = splitter->backward(current.data);
 
                 // Branch output is non-empty only when all required inputs have arrived
                 if (!branch_grads.empty()) {
@@ -672,7 +689,7 @@ public:
             }
             // Handle single operators
             else {
-                std::vector<xt::xarray<double>> op_output = current_component->compute_backwards_pass(current.data);
+                std::vector<xt::xarray<double>> op_output = current_component->backward(current.data);
 
                 const std::unordered_map<int32_t, int32_t>& preds = current_component->predecessors();
                 if (preds.empty()) {
@@ -710,6 +727,14 @@ public:
 
         optimizer_->step(zero_grad);
     }
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    //OPERATOR OVERLOADS
 
 
     /**

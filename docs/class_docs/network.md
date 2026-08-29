@@ -4,6 +4,10 @@
 
 Trainable predictor with user-defined structure.
 
+---
+---
+---
+
 ### Constructor
 
 *Signature:* `Network()`
@@ -126,7 +130,7 @@ To use this method, the network cannot be enabled.
 
 Disables the network.
 
-Prevents training and optimization, but allows more components to be added.
+Prevents training and optimization, but allows the network to be modified.
 
 ---
 
@@ -138,8 +142,7 @@ Checks if the network has the necessary components to run.
 
 If not, throws `enable_failed_error`. If so, allows training and optimization.
 
-Enable check:  
-The network must have a loss calculator, optimizer, at least one component, exactly one output, and a valid first component.
+Enable check: The network must have a loss calculator, optimizer, at least one component, and exactly one output.
 
 **Exceptions**
 

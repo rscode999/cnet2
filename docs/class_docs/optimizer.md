@@ -4,6 +4,10 @@
 
 Improves the weights of a network's layers.
 
+---
+---
+---
+
 ## Shared Virtual Methods
 
 ### Getters

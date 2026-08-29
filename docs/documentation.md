@@ -1,12 +1,56 @@
 # Class and Method Documentation
 
-Documentation for CAST's classes.
+Documentation for CAST's [classes](#classes).
 
-## Operation of a network
+[How to manage branches](#network-branch-rules)
 
-A Network object starts empty.
+## Organization of Pages
 
-Network components (layers, branching structure, etc.) are added one at a time to the Network object.
+Each class documentation page is grouped into these sections:
+- Constructor (how the object is created)
+- Getters (retrieve the object's data)
+- Setters (change the object's data)
+- Methods (any other functionality that is not a getter or a setter)
+- Operator Overloads (allows use of operators on the object)
+
+Any method in a subclass that overrides a superclass method has its own documentation entry. If a superclass' virtual method is not overridden, the method is not listed in the subclass' documentation.
+
+Most objects have a `shared_ptr_deep_copy` method, which clones the object into a new `std::shared_ptr`. The pointer references a separate object and cannot be used to modify the original.
+
+### Format of Documentation Entry
+
+**Method Name**
+
+*Signature:* `method signature, including any modifiers (i.e. const, override)`
+
+Summary of what the method does.
+
+Additional information about the method. Includes more details about what the method does, implementation details that the user might need to know...
+
+**Parameters**
+* `param1` (`datatype`): What the parameter does. Preconditions on the parameter.  
+...
+
+**Returns**
+* `return value` (`datatype`): What the return value means.
+
+**Exceptions**
+* `exception`: Conditions that cause the exception.  
+...
+
+---
+
+## Classes
+* [ActivationFunction](class_docs/activation_function.md)
+* [NetworkComponent](class_docs/network_component.md)
+* [Network](class_docs/network.md)
+* [Optimizer](class_docs/optimizer.md)
+* [Output Stream Manipulators](class_docs/ostream_manip.md)
+
+
+## Network Branch Rules
+
+A Network object starts empty. Network components (layers, branching structure, etc.) are added one at a time to the Network object.
 
 Network components are added to branches, which are separate paths of execution through a network.  
 Each branch has a unique numerical ID. The original branch in a network has ID 0.
@@ -22,25 +66,56 @@ To train and optimize, a network must have exactly one non-merged branch.
 <br>
 
 Example of branch structure creation:
-1. A new, empty network is created. Branch 0 becomes available.
-2. A two-way Splitter is added to branch 0. The addition of the Splitter creates branch 1.
 
+```
+using namespace cast;
+
+// A new, empty network is created. Branch 0 becomes available.
+Network net;
+
+// A two-way Splitter is added to branch 0. The addition of the Splitter creates branch 1, as well as retaining branch 0.
+net.add_splitter(2, 0); //2-way splitter into branch 0
+
+/*
 At this point, the network cannot be used for training and prediction. The network has multiple unterminated branches (0 and 1).
+*/
+```
 
-3. Operators are added to both branch 0 and 1.
-4. A Combiner is placed into branch 0, set to merge branch 1. Branch 1 ends at the newly added Combiner.
+![new branch creation](figures/new_branch.png)
 
-Adding a component to branch 1 is no longer possible because branch 1 has been merged.
+<br>
 
-5. A two-way Splitter is placed in branch 0. Branch 2 is created (branch 1's ID is not reused).
-6. More operators are added to branches 0 and 2. A Combiner merges branches 0 and 2. Now that there is only one unterminated branch, the network can be trained.
+```
+Operators are added to branches 0 and 1...
 
----
+// A Combiner is placed into branch 0, set to merge branch 1. Branch 1 ends at the newly added Combiner.
+net.add_combiner({1}, 0); //Place a Combiner into branch 0, merging branch 1 into it
 
+/*
+Adding a component to branch 1 is no longer possible because branch 1 has ended.
+*/
+```
 
-Classes:
-* [ActivationFunction](class_docs/activation_function.md)
-* [NetworkComponent](class_docs/network_component.md)
-* [Network](class_docs/network.md)
-* [Optimizer](class_docs/optimizer.md)
-* [Output Stream Manipulators](class_docs/ostream_manip.md)
+![branch merging](figures/combined_branch.png)
+
+<br>
+
+```
+// A two-way Splitter is placed in branch 0. Branch 2 is created (branch 1's ID is not reused).
+net.add_splitter(2, 0); //2-way splitter into branch 0
+```
+
+![new branch created after a merge](figures/new_branch_post_combine.png)
+
+<br>
+
+```
+More operators are added to branches 0 and 2...
+
+// A Combiner merges branch 2 into branch 0.
+net.add_combiner({2}, 0); //Place a Combiner into branch 0, merging branch 2 into it
+
+/*
+ Now that there is only one unterminated branch, the network can be trained.
+*/
+```

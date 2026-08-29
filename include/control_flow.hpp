@@ -50,6 +50,10 @@ public:
     }
 
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+
+
     /**
     * @return number of branches after the Splitter's operation, including the Splitter's own branch. Always at least 2.
     */
@@ -64,6 +68,10 @@ public:
     virtual std::string to_string() const override {
         return "splitter {" + std::to_string(branch_count_) + "}";
     }
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////
 
 
     /**
@@ -92,7 +100,7 @@ public:
     * @param successor_gradient single successor gradient. Size and shape of all its elements match those of the first given input
     * @return empty vector, or backprop gradients (if all inputs are received)
     */
-    virtual std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> successor_gradient) override {
+    virtual std::vector<xt::xarray<double>> backward(std::vector<xt::xarray<double>> successor_gradient) override {
         // Perform shape and size assertions if this is not the first input
         if (!successor_outputs_.empty()) {
             const auto& first_input = successor_outputs_[0];
@@ -149,7 +157,7 @@ public:
     /**
     * DO NOT USE! Throws `cast::not_implemented`. The method exists solely to implement a virtual method.
     */
-    std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> unused) override {
+    std::vector<xt::xarray<double>> forward(std::vector<xt::xarray<double>> unused) override {
         throw not_implemented("Does not exist");
     }
 
@@ -221,6 +229,9 @@ public:
     }
 
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     /**
     * @return list of branch IDs that this combiner merges. Does not include the combiner's own branch ID.
@@ -248,12 +259,16 @@ public:
     }
 
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+
+
     /**
     * Returns the empty vector. Upon receiving the `branch_indices().size()`-th input, returns the element-wise sum of all inputs given.
     * @param predecessor_outputs list of layer outputs. Has length >= 1, and each element has the same size and matching corresponding shapes as the first input given
     * @return sum of all inputs, or an empty vector if not all branches are combined
     */
-    std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> predecessor_outputs) override {
+    std::vector<xt::xarray<double>> forward(std::vector<xt::xarray<double>> predecessor_outputs) override {
         str_assert(predecessor_outputs.size() > 0, "Combiner requires at least 1 input");
         assert_no_self_assign_();
 
@@ -316,7 +331,7 @@ public:
     /**
     * DO NOT USE! Throws `cast::not_implemented`. The method exists solely to implement a virtual method.
     */
-    std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> unused) override {
+    std::vector<xt::xarray<double>> backward(std::vector<xt::xarray<double>> unused) override {
         throw not_implemented("Does not exist");
     }
 

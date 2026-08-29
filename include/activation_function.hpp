@@ -50,6 +50,9 @@ public:
         return std::make_shared<Sigmoid>(*this);
     }
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     /**
     * @return the string "sigmoid"
@@ -58,7 +61,8 @@ public:
         return "sigmoid";
     }
 
-
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////
     
     /**
     * Returns the Sigmoid activation function applied to each parameter in `inputs`.
@@ -67,7 +71,7 @@ public:
     * @param inputs list of values to compute. Non-empty
     * @return sigmoid(x) for each element of `inputs`
     */
-    std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> inputs) override {
+    std::vector<xt::xarray<double>> forward(std::vector<xt::xarray<double>> inputs) override {
         str_assert(inputs.size() > 0, "Input vector must be non-empty");
 
         std::vector<xt::xarray<double>> output = {};
@@ -87,7 +91,7 @@ public:
     * @param upstream_gradients list of values to compute. Non-empty
     * @return d(Sigmoid(x))/dx for each element x of `upstream_gradients`
     */
-    std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> upstream_gradients) override {
+    std::vector<xt::xarray<double>> backward(std::vector<xt::xarray<double>> upstream_gradients) override {
         str_assert(upstream_gradients.size() > 0, "Upstream gradients in Sigmoid backwards pass must be non-empty");
         str_assert(prev_outputs_.size() == upstream_gradients.size(), "The forward-pass Sigmoid function must have been previously computed on an input of the same length as `upstream_gradients`");
 
@@ -124,6 +128,9 @@ public:
         return std::make_shared<ReLU>(*this);
     }
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     /**
     * @return the string "relu"
@@ -131,6 +138,9 @@ public:
     std::string to_string() const override {
         return "relu";
     }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////
 
 
     /**
@@ -140,7 +150,7 @@ public:
     * @param inputs list of values to compute. Non-empty
     * @return ReLU(x) for each element of `inputs`
     */
-    std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> inputs) override {
+    std::vector<xt::xarray<double>> forward(std::vector<xt::xarray<double>> inputs) override {
         str_assert(inputs.size() > 0, "Input vector must be non-empty");
 
         std::vector<xt::xarray<double>> output = {};
@@ -159,7 +169,7 @@ public:
     * @param upstream_gradients list of values to compute. Non-empty
     * @return d(ReLU(x))/dx for each element x of `upstream_gradients`
     */
-    std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> upstream_gradients) override {
+    std::vector<xt::xarray<double>> backward(std::vector<xt::xarray<double>> upstream_gradients) override {
         str_assert(upstream_gradients.size() > 0, "Upstream gradients in ReLU backwards pass must be non-empty");
 
         std::vector<xt::xarray<double>> output;

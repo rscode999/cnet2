@@ -4,6 +4,10 @@
 
 Special network components for creating and destroying additional branches.
 
+---
+---
+---
+
 ## Splitter
 
 Breaks control flow into two or more separate paths of execution.
@@ -11,6 +15,8 @@ Breaks control flow into two or more separate paths of execution.
 Always has one predecessor and multiple successors.
 
 Upon receiving an input from its predecessor, the Splitter copies the input and distributes it across its multiple successors.
+
+---
 
 ### Constructor
 
@@ -40,9 +46,9 @@ Returns the number of branches after the Splitter's operation, including the Spl
 
 ### Methods
 
-#### compute (multiple outputs)
+#### forward (multiple outputs)
 
-*Signature:* `virtual std::vector<std::vector<xt::xarray<double>>> compute(std::vector<xt::xarray<double>> input, bool tag)`
+*Signature:* `virtual std::vector<std::vector<xt::xarray<double>>> forward(std::vector<xt::xarray<double>> input, bool tag)`
 
 Returns `input` copied `branch_count()` times.
 
@@ -57,9 +63,9 @@ Returns `input` copied `branch_count()` times.
 
 ---
 
-#### compute (single output)
+#### forward (single output)
 
-*Signature:* `std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> unused) override`
+*Signature:* `std::vector<xt::xarray<double>> forward(std::vector<xt::xarray<double>> unused) override`
 
 DO NOT USE THIS METHOD!
 
@@ -118,6 +124,8 @@ Combiners have multiple predecessors and exactly one successor.
 
 A Combiner cannot collapse its own branch into itself.
 
+---
+
 ### Constructor
 
 *Signature:* `Combiner(std::initializer_list<int32_t> branch_indices)`
@@ -146,9 +154,9 @@ Returns a list of branch IDs that this combiner merges, not including the combin
 
 ### Methods
 
-#### compute
+#### forward
 
-*Signature:* `std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> predecessor_outputs) override`
+*Signature:* `std::vector<xt::xarray<double>> forward(std::vector<xt::xarray<double>> predecessor_outputs) override`
 
 Returns the empty vector. Upon receiving the `branch_indices().size()`-th input, returns the element-wise sum of all inputs given.
 
@@ -166,9 +174,9 @@ Returns the empty vector. Upon receiving the `branch_indices().size()`-th input,
 
 ---
 
-#### compute_backwards_pass
+#### backward
 
-*Signature:* `virtual std::vector<std::vector<xt::xarray<double>>> compute_backwards_pass(std::vector<xt::xarray<double>> prev_gradient, bool tag)`
+*Signature:* `virtual std::vector<std::vector<xt::xarray<double>>> backward(std::vector<xt::xarray<double>> prev_gradient, bool tag)`
 
 Returns `prev_gradient` copied `branch_indices().size()` times.
 
@@ -183,13 +191,15 @@ Returns `prev_gradient` copied `branch_indices().size()` times.
 
 ---
 
-#### compute_backwards_pass
+#### backward
 
-*Signature:* `std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> unused) override`
+*Signature:* `std::vector<xt::xarray<double>> backward(std::vector<xt::xarray<double>> unused) override`
 
 DO NOT USE THIS METHOD!
 
 Throws `cast::not_implemented`. The method exists solely to implement a virtual method and should not be used.
+
+---
 
 #### to_string
 

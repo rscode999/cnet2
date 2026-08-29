@@ -15,6 +15,12 @@ namespace cast {
 
 
 
+/*
+NOTICE TO IMPLEMENTERS:
+The Layer object's parameters and gradients can be changed by outside users.
+The forward or backwards pass must check the dimensions of the params and gradients before calculation.
+*/
+
 /**
 * Layer in a network. Contains parameters and gradients for each parameter.
 *
@@ -39,21 +45,21 @@ protected:
      */
     std::vector<xt::xarray<double>> prev_inputs_;
 
-
 public:
-
-    /**
-     * @return parameters (weights, biases, ...) of this layer
-     */
-    std::vector<xt::xarray<double>>& parameters() {
-        return parameters_;
-    }
 
     /**
      * @return gradients of the weights, biases, etc. of this layer
      */
     std::vector<xt::xarray<double>>& gradients() {
         return gradients_;
+    }
+
+
+    /**
+     * @return parameters (weights, biases, ...) of this layer
+     */
+    std::vector<xt::xarray<double>>& parameters() {
+        return parameters_;
     }
 
 };
@@ -88,7 +94,7 @@ private:
     * Does nothing if `NDEBUG` is defined.
     * @param loc location where this assertion was made
     */
-    void assert_parameter_list_preconditions(std::source_location loc = std::source_location::current()) {
+    void assert_parameter_list_preconditions_(std::source_location loc = std::source_location::current()) {
         #ifndef NDEBUG
 
         str_assert(parameters_.size() == 2, "Linear1d layer must have two parameters", loc);
@@ -130,7 +136,7 @@ public:
     /**
      * Creates a 1d linear layer with `input_dimension` inputs and `output_dimension` outputs.
      *
-     * Weights and biases are randomly initialized, using a normal distribution with mean 0 and std. dev. 1.
+     * Weights and biases are randomly initialized, using a normal distribution with mean 0 and standard deviation 1.
      * Gradients are initialized to zeros.
      * 
      * @param input_dimension required size of input vectors. Positive
@@ -161,6 +167,10 @@ public:
     }
 
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //GETTERS
+
     /**
     * @return the string "linear1d ({input dimension}, {output dimension})"
     */
@@ -169,6 +179,9 @@ public:
     }
 
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    //METHODS
     
     /**
      * Returns the result of the linear forward pass on `input`.
@@ -177,11 +190,11 @@ public:
      * @param input list containing the layer input. Has exactly 1 element
      * @return forward pass result
      */
-    std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> input) override {
+    std::vector<xt::xarray<double>> forward(std::vector<xt::xarray<double>> input) override {
         str_assert(input.size() == 1, "Linear1d forward pass computation takes 1 input; received " + std::to_string(input.size()) + " inputs");
-        assert_tensor_shape(input[0].dimension() == 1, "Linear1d layers require vector (rank 1) inputs; input is of rank " + std::to_string(input[0].dimension()));
-        assert_tensor_shape(input[0].shape()[0] == input_vector_dimension_, "This layer requires vectors of length " + std::to_string(input_vector_dimension_) + "; received length " + std::to_string(input[0].shape()[0]));
-        assert_parameter_list_preconditions();
+        assert_tensor_shape_(input[0].dimension() == 1, "Linear1d layers require vector (rank 1) inputs; input is of rank " + std::to_string(input[0].dimension()));
+        assert_tensor_shape_(input[0].shape()[0] == input_vector_dimension_, "This layer requires vectors of length " + std::to_string(input_vector_dimension_) + "; received length " + std::to_string(input[0].shape()[0]));
+        assert_parameter_list_preconditions_();
 
         prev_inputs_[0] = input[0];
 
@@ -196,11 +209,11 @@ public:
      * @param upstream_gradients gradients from this layer's successor. Contains a single 1d vector
      * @return dY/dL, where Y is the overall derivative and L is this layer's data, contained in index 0 of the output
      */
-    std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> upstream_gradients) override {
+    std::vector<xt::xarray<double>> backward(std::vector<xt::xarray<double>> upstream_gradients) override {
         str_assert(upstream_gradients.size() == 1, "Linear1d backwards operation must have one input; got " + std::to_string(upstream_gradients.size()));
         str_assert(upstream_gradients[0].shape().size() == 1, "Linear1d backwards requires a vector (rank 1)");
         str_assert(upstream_gradients[0].shape()[0] == output_vector_dimension_, "Linear1d backwards requires a vector of size " + std::to_string(output_vector_dimension_) + "; got size " + std::to_string(upstream_gradients[0].shape()[0]));
-        assert_parameter_list_preconditions();
+        assert_parameter_list_preconditions_();
 
         xt::xarray<double> d_output = upstream_gradients[0];
 
@@ -215,7 +228,7 @@ public:
 
         // std::cout << "gradients " << d_input << std::endl;
 
-        // Return the gradient vector for the previous layer wrapped in a Tensor
+        // Return the gradient vector for the previous layer
         return {d_input};
     }
 

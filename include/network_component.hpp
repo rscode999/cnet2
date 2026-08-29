@@ -18,10 +18,6 @@
 namespace cast {
 
 
-
-const int32_t ARBITARY_INPUT_COUNT = -99;
-const int32_t ARBITARY_OUTPUT_COUNT = -100;
-
 /**
 * Initial value for a branch ID.
 *
@@ -63,11 +59,23 @@ protected:
     * @param failure_message error message to display if `condition` is false
     * @param assert_location location where the assertion was enforced
     */
-    void assert_tensor_shape(bool condition, std::string failure_message = "", std::source_location assert_location = std::source_location::current()) {
+    void assert_tensor_shape_(bool condition, std::string failure_message = "", std::source_location assert_location = std::source_location::current()) const {
         if(!condition) {
             throw shape_error(failure_message, assert_location);
         }
     }
+
+    /**
+    * Checks if this component has a non-negative branch ID (that is, it was assigned). If not, throws `cast::assertion_error`.
+    *
+    * Does nothing if `NDEBUG` is defined.
+    */
+    void assert_branch_id_assigned_() const {
+        #ifndef NDEBUG
+        str_assert(branch_id_ >= 0, to_string() + " has no assigned branch ID; got " + std::to_string(branch_id_));
+        #endif
+    }
+
 
 public:
     friend class Network;
@@ -76,14 +84,6 @@ public:
     * @return deep pointer copy of this network component. The deep copy cannot be used to modify the original.
     */
     virtual std::shared_ptr<NetworkComponent> shared_ptr_deep_copy() const = 0;
-
-
-    /**
-    * Checks if this component has a non-negative branch ID (that is, it was assigned). If not, throws `cast::assertion_error`.
-    */
-    void assert_branch_id_assigned() {
-        str_assert(branch_id_ >= 0, to_string() + " has no assigned branch ID; got " + std::to_string(branch_id_));
-    }
 
 
     /**
@@ -97,30 +97,7 @@ public:
         return branch_id_;
     }
 
-
-    /**
-     * @return information about the component, including type and parameters
-     */
-    virtual std::string to_string() const {
-        return "network_component";
-    }
-
-
-    /**
-    * @return indices to this operator's inputs. Maps: branch ID -> index of predecessor
-    */
-    std::unordered_map<int32_t, int32_t> predecessors() const {
-        return predecessors_;
-    }
-
-
-    /**
-    * @return indices to this operator's outputs. Maps: branch ID -> index of successor
-    */
-    std::unordered_map<int32_t, int32_t> successors() const {
-        return successors_;
-    }
-
+    
 
     /**
     * Returns all predecessor and successor branch IDs, in a string.
@@ -147,13 +124,41 @@ public:
 
 
     /**
+    * @return indices to this operator's inputs. Maps: branch ID -> index of predecessor
+    */
+    std::unordered_map<int32_t, int32_t> predecessors() const {
+        return predecessors_;
+    }
+
+
+    /**
+    * @return indices to this operator's outputs. Maps: branch ID -> index of successor
+    */
+    std::unordered_map<int32_t, int32_t> successors() const {
+        return successors_;
+    }
+
+
+    /**
+     * @return information about the component, including type and parameters
+     */
+    virtual std::string to_string() const {
+        return "network_component";
+    }
+
+
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+
+
+    /**
      * Returns the results of this operation on `inputs`.
      *
      * The component can have one or more inputs, and one or more outputs
      * @param inputs tensors to compute this operation on
      * @return results of this operator on `inputs`
      */
-    virtual std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> inputs) = 0;
+    virtual std::vector<xt::xarray<double>> forward(std::vector<xt::xarray<double>> inputs) = 0;
 
     /**
      * Returns the backwards pass of this component on `upstream_gradients`.
@@ -162,8 +167,11 @@ public:
      * @param upstream_gradients gradients from the previous operator
      * @return results of the operator's backwards pass on `upstream_gradients`
      */
-    virtual std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> upstream_gradients) = 0;
+    virtual std::vector<xt::xarray<double>> backward(std::vector<xt::xarray<double>> upstream_gradients) = 0;
 
+
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
 
 
     /**
@@ -172,9 +180,14 @@ public:
     virtual ~NetworkComponent() = default;
 
 
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+    
 
     /**
     * Exports `component` to the output stream `output_stream`, returning `output_stream` with `component`'s information inside.
+    *
+    * Works on any output stream, including `std::wcout`, the wide-character output.
     * @param output_stream stream to put the component into
     * @param component NetworkComponent object to export
     * @return `output_stream` with `component` inserted

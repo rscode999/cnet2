@@ -8,7 +8,7 @@ When added to a Network, a NetworkComponent receives a unique numerical index. T
 
 NetworkComponents are capable of creating deep pointer copies of themselves, so outside users cannot modify a class' private pointers.
 
-Subclasses:
+*Subclasses:*
 * [Operator](operator.md)
     * [ActivationFunction](activation_function.md)
     * [Layer](layer.md)
@@ -21,6 +21,18 @@ Subclasses:
 ### Constructor
 
 Each subclass of `NetworkComponent` has its own constructor.
+
+### Shared Pointer Copying
+
+#### shared_ptr_deep_copy
+
+*Signature:* `virtual std::shared_ptr<NetworkComponent> shared_ptr_deep_copy() const = 0`
+
+Returns a deep pointer copy of this network component. The deep copy cannot be used to modify the original.
+
+**Returns**
+
+* `std::shared_ptr<NetworkComponent>`: Shared pointer to a deep copy of the component.
 
 ---
 
@@ -40,59 +52,8 @@ Returns the branch ID number that this component is assigned to. If unassigned, 
 
 * `cast::unassigned_branch_error`: If the component has not been assigned a branch ID.
 
-#### predecessors
+---
 
-*Signature:* `std::unordered_map<int32_t, int32_t> predecessors() const`
-
-Returns indices to this operator's inputs, mapping branch ID to predecessor's ID.
-
-**Returns**
-
-* `std::unordered_map<int32_t, int32_t>`: A map of branch IDs to predecessor IDs.
-
-#### successors
-
-*Signature:* `std::unordered_map<int32_t, int32_t> successors() const`
-
-Returns indices to this operator's outputs, mapping branch ID to ID of successor.
-
-**Returns**
-
-* `std::unordered_map<int32_t, int32_t>`: A map of branch IDs to successor IDs.
-
-### Methods
-
-#### compute
-
-*Signature:* `virtual std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> inputs) = 0`
-
-Returns the results of this operation on `inputs`.
-
-The component can have one or more inputs, and one or more outputs. Each input and output is given by an index in `inputs` or the returned list.
-
-**Parameters**
-
-* `inputs` (`std::vector<xt::xarray<double>>`): Tensors to compute this operation on.
-
-**Returns**
-
-* `std::vector<xt::xarray<double>>`: Results of this operator on `inputs`.
-
-#### compute_backwards_pass
-
-*Signature:* `virtual std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> upstream_gradients) = 0`
-
-Returns the backwards pass of this component on `upstream_gradients`.
-
-The component can have one or more inputs, and one or more outputs. Each input and output is given by an index in `inputs` or the returned list.
-
-**Parameters**
-
-* `upstream_gradients` (`std::vector<xt::xarray<double>>`): Gradients from the previous operator.
-
-**Returns**
-
-* `std::vector<xt::xarray<double>>`: Results of the operator's backwards pass on `upstream_gradients`.
 
 #### connections_to_string
 
@@ -109,15 +70,31 @@ Largely for debugging.
 
 * `std::string`: Formatted string containing predecessor and successor branch connections.
 
-#### shared_ptr_deep_copy
+---
 
-*Signature:* `virtual std::shared_ptr<NetworkComponent> shared_ptr_deep_copy() const = 0`
+#### predecessors
 
-Returns a deep pointer copy of this network component. The deep copy cannot be used to modify the original.
+*Signature:* `std::unordered_map<int32_t, int32_t> predecessors() const`
+
+Returns indices to this operator's inputs, mapping branch ID to predecessor's ID.
 
 **Returns**
 
-* `std::shared_ptr<NetworkComponent>`: Shared pointer to a deep copy of the component.
+* `std::unordered_map<int32_t, int32_t>`: A map of branch IDs to predecessor IDs.
+
+---
+
+#### successors
+
+*Signature:* `std::unordered_map<int32_t, int32_t> successors() const`
+
+Returns indices to this operator's outputs, mapping branch ID to ID of successor.
+
+**Returns**
+
+* `std::unordered_map<int32_t, int32_t>`: A map of branch IDs to successor IDs.
+
+---
 
 #### to_string
 
@@ -131,6 +108,45 @@ If not overridden by a subclass, returns "network_component".
 
 * `std::string`: String representation of the component.
 
+---
+
+### Methods
+
+#### forward
+
+*Signature:* `virtual std::vector<xt::xarray<double>> forward(std::vector<xt::xarray<double>> inputs) = 0`
+
+Returns the results of this operation on `inputs`.
+
+The component can have one or more inputs, and one or more outputs. Each input and output is given by an index in `inputs` or the returned list.
+
+**Parameters**
+
+* `inputs` (`std::vector<xt::xarray<double>>`): Tensors to compute this operation on.
+
+**Returns**
+
+* `std::vector<xt::xarray<double>>`: Results of this operator on `inputs`.
+
+---
+
+#### backward
+
+*Signature:* `virtual std::vector<xt::xarray<double>> backward(std::vector<xt::xarray<double>> upstream_gradients) = 0`
+
+Returns the backwards pass of this component on `upstream_gradients`.
+
+The component can have one or more inputs, and one or more outputs. Each input and output is given by an index in `inputs` or the returned list.
+
+**Parameters**
+
+* `upstream_gradients` (`std::vector<xt::xarray<double>>`): Gradients from the previous operator.
+
+**Returns**
+
+* `std::vector<xt::xarray<double>>`: Results of the operator's backwards pass on `upstream_gradients`.
+
+---
 
 ### Operator Overloads
 

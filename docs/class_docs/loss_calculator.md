@@ -4,7 +4,9 @@
 
 Computes error between predicted and expected values. Used as the first step in the backwards pass.
 
-LossCalculator objects have no internal state.
+---
+---
+---
 
 ## Shared Virtual Methods
 

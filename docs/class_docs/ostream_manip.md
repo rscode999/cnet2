@@ -4,6 +4,10 @@
 
 Special functions that change the behavior of output streams.
 
+---
+---
+---
+
 #### verbose
 
 *Signature:* `template<typename CharT, typename Traits> inline std::basic_ostream<CharT, Traits>& verbose(std::basic_ostream<CharT, Traits>& output_stream)`
@@ -17,7 +21,7 @@ using namespace cast;
 
 Network net;
 
-<Add components to the network...>
+Add components to the network...
 
 cout << net << endl; //Prints basic information about the network
 
@@ -25,6 +29,8 @@ cout << verbose; //Sets `cout` to print more
 
 cout << net << endl; //Prints more detailed information
 ```
+
+---
 
 #### noverbose
 

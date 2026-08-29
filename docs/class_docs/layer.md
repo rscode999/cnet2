@@ -6,6 +6,10 @@ Contains trainable weights. Only Layers are affected by optimization passes.
 
 Subclass of `Operator`.
 
+---
+---
+---
+
 ## Shared Virtual Methods
 
 ### Getters
@@ -62,11 +66,27 @@ Gradients are initialized to zeros.
 
 ---
 
+### Getters
+
+#### to_string
+
+*Signature:* `std::string to_string() const override`
+
+Returns the string "linear1d ({input dimension}, {output dimension})".
+
+Example: "linear1d (2, 4)", for a Linear1d layer with 2 inputs and 4 outputs
+
+**Returns**
+
+* `std::string`: The string representation of the layer.
+
+---
+
 ### Methods
 
-#### compute
+#### forward
 
-*Signature:* `std::vector<xt::xarray<double>> compute(std::vector<xt::xarray<double>> input) override`
+*Signature:* `std::vector<xt::xarray<double>> forward(std::vector<xt::xarray<double>> input) override`
 
 Returns the result of the linear forward pass on `input`.
 
@@ -84,9 +104,9 @@ Returns the result of the linear forward pass on `input`.
 
 ---
 
-#### compute_backwards_pass
+#### backward
 
-*Signature:* `std::vector<xt::xarray<double>> compute_backwards_pass(std::vector<xt::xarray<double>> upstream_gradients) override`
+*Signature:* `std::vector<xt::xarray<double>> backward(std::vector<xt::xarray<double>> upstream_gradients) override`
 
 Returns the gradients with respect to this layer and `upstream_gradients`, updating this layer's gradients.
 
@@ -97,17 +117,3 @@ Returns the gradients with respect to this layer and `upstream_gradients`, updat
 **Returns**
 
 * `std::vector<xt::xarray<double>>`: dY/dL, where Y is the overall derivative and L is this layer's data, contained in index 0 of the output.
-
----
-
-#### to_string
-
-*Signature:* `std::string to_string() const override`
-
-Returns the string "linear1d ({input dimension}, {output dimension})".
-
-Example: "linear1d (2, 4)", for a Linear1d layer with 2 inputs and 4 outputs
-
-**Returns**
-
-* `std::string`: The string representation of the layer.
