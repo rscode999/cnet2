@@ -4,8 +4,7 @@
 #include <unordered_map>
 #include <xtensor/io/xio.hpp>
 
-#include "include/loss_calculator.hpp"
-#include "include/network.hpp"
+#include "include/cast.hpp"
 
 using namespace std;
 using namespace xt;

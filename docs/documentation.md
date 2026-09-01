@@ -43,6 +43,9 @@ Additional information about the method. Includes more details about what the me
 ---
 
 ## Classes
+
+All functionality is under the `cast` namespace.
+
 * [ActivationFunction](class_docs/activation_function.md)
 * [NetworkComponent](class_docs/network_component.md)
 * [Network](class_docs/network.md)

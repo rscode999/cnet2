@@ -8,6 +8,7 @@
 #include "loss_calculator.hpp"
 #include "optimizer.hpp"
 
+#include <unordered_set>
 #include <xtensor/containers/xarray.hpp>
 
 #include <cstdint>
@@ -175,15 +176,21 @@ public:
     //GETTERS
 
     /**
-    * Returns the 0-based indices of the ends of each branch in the internal component storage.
-    *
-    * The output's length is equal to the total number of branches used in the network so far (but the branches may not necessarily still exist).
+    * Returns the set of valid branch IDs.
     * 
-    * Index `i` equals the constant `NETWORK_BRANCH_COMBINED` (a negative value) if branch `i` has been combined with another branch, and thus no longer exists.
-    * @return indices of leaf nodes
+    * Branches that have been merged are not included.
+    * @return IDs of valid branches
     */
-    std::vector<int32_t> active_branch_indices() const {
-        return leaf_node_indices_;
+    std::unordered_set<int32_t> active_branch_ids() const {
+        std::unordered_set<int32_t> out;
+        
+        for(int32_t i = 0; i < (int32_t)leaf_node_indices_.size(); i++) {
+            if(leaf_node_indices_[i] != NETWORK_BRANCH_COMBINED) {
+                out.insert({i});
+            }
+        }
+
+        return out;
     }
 
 
@@ -414,7 +421,7 @@ public:
 
     /**
      * Checks if the network has the necessary components to run. 
-     * If not, throws `enable_error`. If so, allows training and optimization.
+     * If not, throws `cast::enable_failed_error`. If so, allows training and optimization.
      *
      * If successful, this method initializes the stored optimizer.
      *
@@ -476,6 +483,7 @@ public:
             }
         }
 
+        //IMPORTANT: Initialization logic must come AFTER the checks. Otherwise, this method could be in a try/catch and allow training, even though the check failed.
         optimizer_->initialize(components_);
         enabled_ = true;
     }
@@ -490,6 +498,8 @@ public:
 
     /**
      * Returns the result of the network's forward pass on `input`.
+     *
+     * Throws `cast::shape_error` if layer dimensions are incompatible.
      *
      * To use this method, the network must be enabled. 
      * @param input tensor to compute forward pass on

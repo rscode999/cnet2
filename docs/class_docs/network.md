@@ -28,19 +28,17 @@ The new network is not enabled, with no components, loss calculator, or optimize
 
 ### Getters
 
-#### active_branch_indices
+#### active_branch_ids
 
-*Signature:* `std::vector<int32_t> active_branch_indices() const`
+*Signature:* `std::unordered_set<int32_t> active_branch_ids() const`
 
-Returns the 0-based indices of the ends of each branch in the internal component storage.
+Returns the set of valid branch IDs in the network.
 
-The output's length is equal to the total number of branches used in the network so far (but the branches may not necessarily still exist).
-
-Index `i` equals the constant `NETWORK_BRANCH_COMBINED` (a negative value) if branch `i` has been combined with another branch, and thus no longer exists.
+A valid branch ID is one that can be added to.
+Branches that have been merged (and thus permanently terminated) are not included in the output.
 
 **Returns**
-
-* `std::vector<int32_t>`: Indices of leaf nodes.
+* `std::unordered_set<int32_t>`: All valid branch IDs.
 
 ---
 
