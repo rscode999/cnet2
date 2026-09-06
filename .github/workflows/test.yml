@@ -1,0 +1,41 @@
+# Runs the unit tests
+name: Run Unit Tests
+
+on:
+
+  # Trigger on any action
+  push:
+
+  pull_request:
+
+  workflow_dispatch:
+
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+
+      # Downloads XTensor into the lib/ directory
+      - name: Download XTensor libraries
+        run: |
+          cd lib
+          git clone --branch 0.27.0 https://github.com/xtensor-stack/xtensor
+          git clone --branch 0.23.0 https://github.com/xtensor-stack/xtensor-blas
+          git clone --branch 0.8.2 https://github.com/xtensor-stack/xtl
+
+      # Compile the test using the test directory's Makefile
+      - name: Compile tests
+        run: |
+          cd tests
+          make
+        
+      # Runs the tests
+      - name: Run tests
+        run: |
+          cd tests
+          ./tests

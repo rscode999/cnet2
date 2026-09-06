@@ -1,10 +1,13 @@
 # Change Log
 
 ## 0.10.0
-*In Progress*
+*6 September 2026*
 
 - Decision to use sequential component addition is finalized.
-    - *Rationale:* Implementing PyTorch-like method definitions requires two objects: a proxy object that the user creates, and a network-internal object that stores the weights. In the case where an operator is created multiple times, each operator, as well as the proxy object, must be stored within the network. Having multiple types of objects adds unnecessary complexity. The framework matching CNet's style of network creation negates the small gains in flexibility.
+    - *Rationale:* Implementing PyTorch-like method definitions requires two objects: a proxy object that the user creates, and a network-internal object that stores the weights. In the case where an operator is created multiple times, each operator instance, as well as the proxy object, must be stored within the network. Having multiple types of objects adds unnecessary complexity. The framework matching CNet's style of network creation negates the small gains in flexibility.
+- Add unit testing through custom CUnit methods. Temporary measure until a more robust testing framework can be installed and used
+- Reorganize documentation to make it better suited to be a github wiki
+- Add Github workflow to run the unit tests and publish documentation to the github wiki
 
 ## 0.9.0
 *17 August 2026*
@@ -22,6 +25,7 @@ Full implementation of branched network topologies.
 - Separate methods for adding Combiners, Splitters, and Operators (single-input, single-output components. Direct subclasses are the ActivationFunction and Layer)
 - Proper implementation of the `enable` check, along with verification when each new component is added to the network
 - All `std::shared_ptr`s added to the network become deep copies
+- 
 
 ## 0.7.0
 *10 August 2026*

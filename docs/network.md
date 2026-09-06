@@ -1,6 +1,6 @@
 # Network
 
-[Back to central documentation](../documentation.md)
+[Back to central documentation](Home)
 
 Trainable predictor with user-defined structure.
 
@@ -39,6 +39,42 @@ Branches that have been merged (and thus permanently terminated) are not include
 
 **Returns**
 * `std::unordered_set<int32_t>`: All valid branch IDs.
+
+---
+
+#### active_branch_id_heads
+
+*Signature:* `std::unordered_map<int32_t, int32_t> active_branch_id_heads() const`
+
+Returns a mapping of all valid branch IDs to the component ID of the branch's final component.
+
+A valid branch ID is one that can be added to.
+Branches that have been merged (and thus permanently terminated) are not included in the output.
+
+A component's ID is the 0-based order in which the component was added to the network.
+The first component added has an ID of 0. The second has an ID of 1, and so on.
+
+**Returns**
+* `std::unordered_map<int32_t, int32_t>`: Branch ID -> component ID of the branch's head.
+
+---
+
+#### component_at
+
+*Signature:* `std::shared_ptr<NetworkComponent> component_at(int32_t component_id) const`
+
+Returns a pointer to the component with ID `component_id`.
+
+A component's ID is the 0-based order in which the component was added to the network.
+ID 0 is the first component added, 1 is the second component added, and so on.
+
+The returned pointer cannot be used to modify the network's component.
+
+**Parameters**
+* `component_id` (`int32_t`): ID to access. At least 0, and less than the number of components added so far.
+
+**Returns**
+* `std::shared_ptr<NetworkComponent>`: Component with the given ID.
 
 ---
 

@@ -1,6 +1,6 @@
-MAIN='test.cpp' #Put your path to a file containing `main` here
+MAIN='tests.cpp' #Put your path to a file containing `main` here
 
-OUTPUT_EXECUTABLE_NAME='a' #put your desired executable name here
+OUTPUT_EXECUTABLE_NAME='tests' #put your desired executable name here
 
 XTENSOR_PATH='../lib/xtensor/include/'
 XTL_PATH='../lib/xtl/include/'

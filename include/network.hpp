@@ -218,7 +218,9 @@ public:
 
 
     /**
-    * Returns a mapping of remaining branch IDs to the indices of their heads.
+    * Returns a mapping of remaining branch IDs to the component IDs of their heads.
+    *
+    * A component's ID is the 0-based order in which the component was added to the network.
     * 
     * Branches that have been merged are not included.
     * @return mapping of: branch ID -> final index of the branch
@@ -228,6 +230,24 @@ public:
     }
 
 
+
+    /**
+    * Returns a pointer to the component with ID `component_id`.
+    * 
+    * A component's ID is the 0-based order in which the component was added to the network.
+    * ID 0 is the first component added, 1 is the second component added, and so on.
+    *
+    * The returned pointer cannot be used to modify the network's component.
+    * @param component_id component number to access. At least 0, and less than the number of components added so far.
+    * @return `i`-th component in the network
+    */
+    std::shared_ptr<NetworkComponent> component_at(int32_t component_id) const {
+        str_assert(component_id >= 0 && component_id < (int32_t)components_.size(), "ID must be at least 0 and less than the number of components added");
+        return components_[component_id]->shared_ptr_deep_copy();
+    }   
+
+
+
     /**
     * @return whether the network is ready for training and optimization
     */
@@ -235,20 +255,6 @@ public:
         return enabled_;
     }
 
-
-
-    /**
-    * Returns a pointer to the `i`-th component added to the network. 
-    * Indexing is 0-based: to access the first component added, use `i`=0.
-    *
-    * The returned pointer cannot be used to modify the network.
-    * @param i component number to access
-    * @return `i`-th component in the network
-    */
-    std::shared_ptr<NetworkComponent> component_at(int32_t i) const {
-        str_assert(i >= 0 && i < (int32_t)components_.size(), "Index must be at least 0 and less than the number of components added");
-        return components_.at(i)->shared_ptr_deep_copy();
-    }   
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -806,10 +812,8 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
         output_stream << "\n";
     }
     for (int32_t i = 0; i < (int32_t)network.components_.size(); i++) {
-        if(!network.components_[i]) {
-            throw assertion_error("Network component " + std::to_string(i) + " is nullptr");
-        }
-        output_stream << "Operator " << i << ": " << *network.components_[i] << "\n";
+        str_assert(network.components_[i] != nullptr, "Network component " + std::to_string(i) + " is nullptr");
+        output_stream << "Component " << i << ": " << *network.components_[i] << "\n";
     }
     return output_stream;
 }

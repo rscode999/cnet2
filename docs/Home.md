@@ -1,7 +1,5 @@
 # Class and Method Documentation
 
-[Back to README](../README.md)
-
 Documentation for CAST's [classes](#classes).
 
 [How to manage branches](#network-branch-rules)
@@ -46,11 +44,11 @@ Additional information about the method. Includes more details about what the me
 
 All functionality is under the `cast` namespace.
 
-* [ActivationFunction](class_docs/activation_function.md)
-* [NetworkComponent](class_docs/network_component.md)
-* [Network](class_docs/network.md)
-* [Optimizer](class_docs/optimizer.md)
-* [Output Stream Manipulators](class_docs/ostream_manip.md)
+* [ActivationFunction](activation_function)
+* [NetworkComponent](network_component)
+* [Network](network)
+* [Optimizer](optimizer)
+* [Output Stream Manipulators](ostream_manip)
 
 
 ## Network Branch Rules
@@ -86,7 +84,7 @@ At this point, the network cannot be used for training and prediction. The netwo
 */
 ```
 
-![new branch creation](figures/new_branch.png)
+![new branch creation](new_branch.png)
 
 <br>
 
@@ -101,7 +99,7 @@ Adding a component to branch 1 is no longer possible because branch 1 has ended.
 */
 ```
 
-![branch merging](figures/combined_branch.png)
+![branch merging](combined_branch.png)
 
 <br>
 
@@ -110,7 +108,7 @@ Adding a component to branch 1 is no longer possible because branch 1 has ended.
 net.add_splitter(2, 0); //2-way splitter into branch 0
 ```
 
-![new branch created after a merge](figures/new_branch_post_combine.png)
+![new branch created after a merge](new_branch_post_combine.png)
 
 <br>
 

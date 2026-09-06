@@ -2,7 +2,9 @@
 *CNet 2.0*  
 **C++ framework for neural networks**
 
-[Documentation](docs/documentation.md)
+[Documentation](docs/Home.md)
+
+[Change Log](CHANGES.md)
 
 ## Foreword
 

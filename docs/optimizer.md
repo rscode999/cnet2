@@ -1,6 +1,6 @@
 # Optimizer
 
-[Back to central documentation](../documentation.md)
+[Back to central documentation](Home)
 
 Improves the weights of a network's layers.
 
