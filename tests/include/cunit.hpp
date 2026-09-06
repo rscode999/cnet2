@@ -6,6 +6,7 @@
 #include <source_location>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 
 namespace cunit {
@@ -48,12 +49,6 @@ public:
 
 
 /**
-* Contains static methods for unit testing
-*/
-class CUnit {
-private:
-
-/**
 * If `expected` and `result` are not equal, prints the expected and result to `std::cerr`, 
 * then throws the `cunit::test_failed` exception with the message `failure_msg`.
 *
@@ -64,7 +59,7 @@ private:
 * @param loc location where this test was carried out (for debugging purposes)
 */
 template<typename T>
-inline static void assert_equals_msg_(const T& expected, const T& result, std::string failure_msg = "Expected and result not equal", std::source_location loc = std::source_location::current()) {
+inline  void __assert_equals_msg(const T& expected, const T& result, std::string failure_msg = "Expected and result not equal", std::source_location loc = std::source_location::current()) {
     if(!(expected == result)) {
         std::cerr << "Expected: " << expected << "\n";
         std::cerr << "Result:   " << result << "\n";
@@ -87,7 +82,7 @@ inline static void assert_equals_msg_(const T& expected, const T& result, std::s
 * @param loc location where this test was carried out (for debugging purposes)
 */
 template<typename T>
-inline static void assert_almost_equals_msg_(const T& expected, const T& result, const T& tolerance, std::string failure_message = "Expected and result are not equal", std::source_location loc = std::source_location::current()) {
+inline  void __assert_almost_equals_msg_(const T& expected, const T& result, const T& tolerance, std::string failure_message = "Expected and result are not equal", std::source_location loc = std::source_location::current()) {
     if(abs(expected - result) > tolerance) {
         std::cerr << "Expected: " << expected << "\n";
         std::cerr << "Result:   " << result << "\n";
@@ -96,7 +91,6 @@ inline static void assert_almost_equals_msg_(const T& expected, const T& result,
 }
 
 
-public:
 
 /**
 * Equality check.
@@ -105,14 +99,43 @@ public:
 * then throws the `cunit::test_failed` exception.
 *
 * Requires that the items being tested have an overloaded equality (`==`) and output stream insertion (`<<`) operator.
-* @param expected value that a test shouhld produce
+* @param expected value that a test should produce
 * @param result value that the test actually produced
 * @param loc location where this test was carried out (for debugging purposes)
 */
 template<typename T>
-inline static void assert_equals(const T& expected, const T& result, std::source_location loc = std::source_location::current()) {
-    assert_equals_msg_(expected, result, "Expected and result are not equal", loc);
+inline void assert_equals(const T& expected, const T& result, std::source_location loc = std::source_location::current()) {
+    __assert_equals_msg(expected, result, "Expected and result are not equal", loc);
 }
+
+
+
+
+/**
+* Equality check (specialization for std::unordered_map<int32_t, int32_t>)
+*
+* If `expected` and `result` are not equal, prints each element of the expected and result to `std::cerr`, 
+* then throws the `cunit::test_failed` exception.
+* 
+* @param expected value that a test should produce
+* @param result value that the test actually produced
+* @param loc location where this test was carried out (for debugging purposes)
+*/
+inline void assert_unordered_map_equals(const std::unordered_map<int32_t, int32_t>& expected, const std::unordered_map<int32_t, int32_t>& result, std::source_location loc = std::source_location::current()) {
+    if(!(expected == result)) {
+        std::cerr << "Expected: {";
+        for(const auto& e : expected ) {
+            std::cerr << "{" << e.first << ", " << e.second << "}, ";
+        }
+        std::cerr << "}\nResult:   {";
+        for(auto& r : result ) {
+            std::cerr << "{" << r.first << ", " << r.second << "}, ";
+        }
+        std::cerr << "}\n";
+        throw test_failed("Expected and result are not equal", loc);
+    }
+}
+
 
 
 /**
@@ -127,8 +150,8 @@ inline static void assert_equals(const T& expected, const T& result, std::source
 * @param loc location where this test was carried out (for debugging purposes)
 */
 template<typename T>
-inline static void assert_almost_equals(const T& expected, const T& result, const T& tolerance, std::source_location loc = std::source_location::current()) {
-    assert_almost_equals_msg_(expected, result, tolerance, "Expected and result are not equal", loc);
+inline void assert_almost_equals(const T& expected, const T& result, const T& tolerance, std::source_location loc = std::source_location::current()) {
+    __assert_almost_equals_msg_(expected, result, tolerance, "Expected and result are not equal", loc);
 }
 
 
@@ -146,7 +169,7 @@ inline static void assert_almost_equals(const T& expected, const T& result, cons
 * @param loc location where this test was carried out (for debugging purposes)
 */
 template<typename T>
-inline static void assert_equals_nodebug(const T& expected, const T& result, std::source_location loc = std::source_location::current()) {
+inline void assert_equals_nodebug(const T& expected, const T& result, std::source_location loc = std::source_location::current()) {
     if(!(expected == result)) {
         throw test_failed("Expected and result are not equal", loc);
     }
@@ -169,13 +192,13 @@ inline static void assert_equals_nodebug(const T& expected, const T& result, std
 * @param loc location where this test was carried out (for debugging purposes)
 */
 template<typename T>
-inline static void assert_iterable_equals(const T& expected, const T& result, std::source_location loc = std::source_location::current()) {
+inline void assert_array_equals(const T& expected, const T& result, std::source_location loc = std::source_location::current()) {
     auto expected_iterator = expected.begin();
     auto result_iterator = result.begin();
 
     int32_t n_elements = 0;
     for(; expected_iterator != expected.end() && result_iterator != result.end(); ++expected_iterator, ++result_iterator) {
-        assert_equals_msg_(*expected_iterator, *result_iterator,
+        __assert_equals_msg(*expected_iterator, *result_iterator,
              "Expected and result are not equal at index " + std::to_string(n_elements) + " in the iteration order", loc);
         n_elements++;
     }
@@ -206,7 +229,7 @@ inline static void assert_iterable_equals(const T& expected, const T& result, st
 * @param loc location where this test was carried out (for debugging purposes)
 */
 template<typename T, typename ToleranceT>
-inline static void assert_iterable_almost_equals(const T& expected, const T& result, const ToleranceT& tolerance, std::source_location loc = std::source_location::current()) {
+inline void assert_array_almost_equals(const T& expected, const T& result, const ToleranceT& tolerance, std::source_location loc = std::source_location::current()) {
     auto expected_iterator = expected.begin();
     auto result_iterator = result.begin();
 
@@ -215,7 +238,7 @@ inline static void assert_iterable_almost_equals(const T& expected, const T& res
         const auto& current_expected = *expected_iterator;
         const auto& current_result = *result_iterator;
 
-        assert_almost_equals_msg_(current_expected, current_result, 
+        __assert_almost_equals_msg_(current_expected, current_result, 
             tolerance, "Expected and result are separated by more than " + std::to_string(tolerance) + " at index " + std::to_string(n_elements) + " in the iteration order", loc);
 
         n_elements++;
@@ -239,7 +262,7 @@ inline static void assert_iterable_almost_equals(const T& expected, const T& res
 * @param failure_msg additional information to display if the truth test fails
 * @param loc location where this test was carried out (for debugging purposes)
 */
-inline static void assert_true(bool condition, std::string failure_msg = "", std::source_location loc = std::source_location::current()) {
+inline void assert_true(bool condition, std::string failure_msg = "", std::source_location loc = std::source_location::current()) {
     if(!condition) {
         std::string full_failure_msg = "Truth test failed";
         full_failure_msg += (failure_msg.size() > 0) ? ("- " + failure_msg) : "";
@@ -247,8 +270,6 @@ inline static void assert_true(bool condition, std::string failure_msg = "", std
     }
 }
 
-
-};
 
 
 }

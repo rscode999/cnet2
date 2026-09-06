@@ -16,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <queue>
+#include <ranges>
 #include <stack>
 #include <string>
 
@@ -23,13 +24,6 @@
 
 namespace cast {
 
-
-
-
-/**
-* Signals that a branch index has been merged with another branch
-*/
-const int32_t NETWORK_BRANCH_COMBINED = -256;
 
 
 
@@ -46,6 +40,14 @@ private:
      * True if the network is ready for training and evaluation
      */
     bool enabled_;
+
+    /**
+    * After the first component is added, this field is 1 greater than the largest branch ID 
+    * (even among branches that no longer exist) assigned to any component.
+    *
+    * Example: If the network created 2 branches, this field equals 3.
+    */
+    int32_t next_branch_id_;
     
     /**
      * Loss metric used by this network
@@ -57,6 +59,7 @@ private:
      */
     std::shared_ptr<Optimizer> optimizer_;
 
+
     /**
     * Indices in `components_` that are leaf nodes, i.e. have no successors. Element `i` is the leaf node index for branch `i`.
     *
@@ -66,12 +69,37 @@ private:
     * Element `i` equaling `NETWORK_BRANCH_COMBINED` indicates that branch `i` has been combined, and no longer exists.
     * (This vector is never removed from.)
     */
-    std::vector<int32_t> leaf_node_indices_;
+    std::unordered_map<int32_t, int32_t> leaf_node_indices_;
 
     /**
      * Network components that the network uses, in the order that they were added
      */
     std::vector<std::shared_ptr<NetworkComponent>> components_;
+
+
+    /**
+    * Stores all data required for a network component to execute.
+    * This data is placed in a queue during the forward or backward pass.
+    *
+    * Contains: component's branch ID, index in the `components_` list, and any inputs it has.
+    */
+    struct ComponentExecutionData {
+        /**
+        * Branch ID of the component
+        */
+        int32_t branch_id;
+
+        /**
+        * 0-based index of the component in the `components_` list
+        */
+        int32_t component_index;
+
+        /**
+        * Input tensor(s) that the component receives when its turn to execute arrives.
+        * In the backwards pass, this field holds the component's upstream gradients.
+        */
+        std::vector<xt::xarray<double>> component_input;
+    };
 
  
     /**
@@ -117,7 +145,7 @@ private:
             );
         }
         // Check that the branch ID given has not been combined
-        if (leaf_node_indices_[branch_id] == NETWORK_BRANCH_COMBINED) {
+        if (!leaf_node_indices_.contains(branch_id)) {
             throw bad_component_addition(
                 "Branch " + std::to_string(branch_id) + " has already been combined and does not exist",
                 check_location
@@ -141,13 +169,14 @@ private:
                 );
             }
             //Cannot add to a branch that has been combined
-            if (leaf_node_indices_[combine_index] == NETWORK_BRANCH_COMBINED) {
+            if (!leaf_node_indices_.contains(combine_index)) {
                 throw bad_component_addition(
                     "Branch IDs to combine index " + std::to_string(pos) + " (" + std::to_string(combine_index) +
                     ") was already combined",
                     check_location
                 );
             }
+
             //Cannot assign to its own branch
             if (combine_index == branch_id) {
                 throw bad_component_addition(
@@ -165,7 +194,7 @@ public:
     /**
      * Creates an empty network. The new network is disabled.
      */
-    Network() : enabled_(false) {      
+    Network() : enabled_(false), next_branch_id_(0) {      
     };
 
 
@@ -182,17 +211,21 @@ public:
     * @return IDs of valid branches
     */
     std::unordered_set<int32_t> active_branch_ids() const {
-        std::unordered_set<int32_t> out;
-        
-        for(int32_t i = 0; i < (int32_t)leaf_node_indices_.size(); i++) {
-            if(leaf_node_indices_[i] != NETWORK_BRANCH_COMBINED) {
-                out.insert({i});
-            }
-        }
-
-        return out;
+        auto keysView = std::views::keys(leaf_node_indices_);
+        return std::unordered_set<int32_t>(keysView.begin(), keysView.end());
     }
 
+
+
+    /**
+    * Returns a mapping of remaining branch IDs to the indices of their heads.
+    * 
+    * Branches that have been merged are not included.
+    * @return mapping of: branch ID -> final index of the branch
+    */
+    std::unordered_map<int32_t, int32_t> active_branch_id_heads() const {
+        return leaf_node_indices_;
+    }
 
 
     /**
@@ -203,6 +236,19 @@ public:
     }
 
 
+
+    /**
+    * Returns a pointer to the `i`-th component added to the network. 
+    * Indexing is 0-based: to access the first component added, use `i`=0.
+    *
+    * The returned pointer cannot be used to modify the network.
+    * @param i component number to access
+    * @return `i`-th component in the network
+    */
+    std::shared_ptr<NetworkComponent> component_at(int32_t i) const {
+        str_assert(i >= 0 && i < (int32_t)components_.size(), "Index must be at least 0 and less than the number of components added");
+        return components_.at(i)->shared_ptr_deep_copy();
+    }   
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -243,25 +289,30 @@ public:
         int32_t combiner_node_index = (int32_t)components_.size() - 1;
         combiner->predecessors_.clear();
 
-        // 1. Add the branch that the combiner is added to into predecessors
+        // Add the branch that the combiner is added to into predecessors
         int32_t target_leaf_idx = leaf_node_indices_[branch_id];
         int32_t target_branch_id = components_[target_leaf_idx]->branch_id_;
         combiner->predecessors_[target_branch_id] = target_leaf_idx;
         components_[target_leaf_idx]->successors_[target_branch_id] = combiner_node_index;
 
-        // 2. Add all other combiner branch indices into predecessors and mark them as combined
+        // for(auto p : leaf_node_indices_) {
+        //     std::cout << p.first << "," << p.second << std::endl;
+        // }
+
+        // Add all other combiner branch indices into predecessors and mark them as combined
         for (int32_t combiner_branch_idx : combiner->branch_indices()) {
             int32_t leaf_idx = leaf_node_indices_[combiner_branch_idx];
-            int32_t branch_id = components_[leaf_idx]->branch_id_;
+            int32_t leaf_branch_id = components_[leaf_idx]->branch_id_;
 
-            combiner->predecessors_[branch_id] = leaf_idx;
+            combiner->predecessors_[leaf_branch_id] = leaf_idx;
             components_[leaf_idx]->successors_[branch_id] = combiner_node_index;
 
             // Mark branch as combined
-            leaf_node_indices_[combiner_branch_idx] = NETWORK_BRANCH_COMBINED;
+            bool erase_successful = leaf_node_indices_.erase(combiner_branch_idx);
+            str_assert(erase_successful, "INTERNAL ERROR- Attempted to merge a branch that doesn't exist");
         }
 
-        // 3. Update the leaf node index for the target branch to point to the combiner
+        // Update the leaf node index for the target branch to point to the combiner
         leaf_node_indices_[branch_id] = combiner_node_index;
     }
 
@@ -292,7 +343,9 @@ public:
 
         //First operator loaded: Add the current node as an output
         if(leaf_node_indices_.size() == 0) {
-            leaf_node_indices_.push_back(0);
+            str_assert(next_branch_id_ == 0, "Next branch ID must be 0 if the first operator is loaded");
+            leaf_node_indices_[next_branch_id_] = 0;
+            next_branch_id_ = 1; //After branch 0 is created, the next possible branch ID is 1.
             return;
         }
 
@@ -329,7 +382,9 @@ public:
 
         //First operator loaded: Add the current node as an output
         if(leaf_node_indices_.size() == 0) {
-            leaf_node_indices_.push_back(0);
+            str_assert(next_branch_id_ == 0, "Next branch ID must be 0 if the first splitter is loaded");
+            leaf_node_indices_[next_branch_id_] = 0;
+            next_branch_id_ = 1; //After branch 0 is created, the next possible branch ID is 1.
             return;
         }
 
@@ -340,7 +395,8 @@ public:
         // Add new possible branches, marking the branch's index as successors
         int32_t branch_add_index = (int32_t)components_.size() - 1;
         for(int32_t i = 0; i < splitter->branch_count() - 1; i++) {
-            leaf_node_indices_.push_back(branch_add_index);
+            leaf_node_indices_[next_branch_id_] = branch_add_index;
+            next_branch_id_++;
         }
 
         // Register recently added node as the current branch leaf node's successor
@@ -456,20 +512,12 @@ public:
         }
 
         //Check for single output
-        std::vector<int32_t> unmerged_branches = {};
-        for(int32_t i = 0; i < (int32_t)leaf_node_indices_.size(); i++) {
-            if(leaf_node_indices_[i] != NETWORK_BRANCH_COMBINED) {
-                unmerged_branches.push_back(i);
-            }
-        }
         //If there is not exactly 1 unmerged branch, convert all unmerged branch IDs to a string and error
-        if(unmerged_branches.size() != 1) {
+        if(leaf_node_indices_.size() != 1) {
             std::string unmerged_branches_str = "";
-            for(int32_t i = 0; i < (int32_t)unmerged_branches.size() - 1; i++) {
-                unmerged_branches_str += std::to_string(unmerged_branches[i]) + ", ";
+            for(std::pair<int32_t, int32_t> branch_end : leaf_node_indices_) {
+                unmerged_branches_str += std::to_string(branch_end.first) + ", ";
             }
-            unmerged_branches_str += std::to_string(unmerged_branches[unmerged_branches.size()-1]);
-
             throw enable_failed_error("Network must have exactly one output. Remaining branches: " + unmerged_branches_str);
         }
 
@@ -510,32 +558,24 @@ public:
             throw bad_network_config("Must enable the network prior to training");
         }
 
-        struct Task {
-            int32_t branch_id;
-            int32_t components_index;
-            std::vector<xt::xarray<double>> data;
-        };
 
-        std::queue<Task> execution_queue;
+        std::queue<ComponentExecutionData> execution_queue;
         execution_queue.push({0, 0, {input}});
 
         while(!execution_queue.empty()) {
-            Task current = execution_queue.front();
+            ComponentExecutionData current = execution_queue.front();
             execution_queue.pop();
 
             int32_t branch_id = current.branch_id;
-            int32_t components_idx = current.components_index;
-
-            if (components_idx == NETWORK_BRANCH_COMBINED) {
-                continue;
-            }
-
-            std::shared_ptr<NetworkComponent> current_component = components_.at(components_idx);
+            int32_t component_idx = current.component_index;
+            
+            //Get the component from the network's storage list
+            std::shared_ptr<NetworkComponent> current_component = components_.at(component_idx);
             // std::cout << "Executing " << current_op->name() << std::endl;
 
             // Handle splitters: Push all of its successors, including itself, into the execution queue
             if (std::shared_ptr<Splitter> splitter = std::dynamic_pointer_cast<Splitter>(current_component)) {
-                std::vector<std::vector<xt::xarray<double>>> branch_output = splitter->compute(current.data, true);
+                std::vector<std::vector<xt::xarray<double>>> branch_output = splitter->compute(current.component_input, true);
 
                 std::unordered_map<int32_t, int32_t> successors = splitter->successors();
                 str_assert(!successors.empty(), "Branch must have at least one successor");
@@ -552,19 +592,19 @@ public:
             }
             // Handle combiners
             else if(std::shared_ptr<Combiner> combiner = std::dynamic_pointer_cast<Combiner>(current_component)) {
-                std::vector<xt::xarray<double>> combiner_output = combiner->forward(current.data);
+                std::vector<xt::xarray<double>> combiner_output = combiner->forward(current.component_input);
                 
-                // Combiner output is non-empty only when all required inputs have arrived
+                // Combiner output is non-empty only when all required inputs have arrived (i.e. its output is non-empty)
                 if(!combiner_output.empty()) {
                     // std::cout << "Combiner is ready" << std::endl;
                     
-                    //No successors: Return
+                    //The Combiner has no successors: Return
                     if(combiner->successors().empty()) {
                         // std::cout << "COMBINER HAS NO SUCCESSORS" << std::endl;
                         return combiner_output[0];
                     }
 
-                    auto const& succs = combiner->successors();
+                    const std::unordered_map<int32_t, int32_t> succs = combiner->successors();
                     str_assert(succs.size() == 1, "Combiner must have one successor");
                     
                     //Push the combiner's single successor to the execution queue
@@ -579,7 +619,7 @@ public:
 
                 //Compute the output. If incompatible shapes, re-throw the shape error
                 try {
-                    op_output = current_component->forward(current.data);
+                    op_output = current_component->forward(current.component_input);
                 }
                 catch(shape_error& e) {
                     throw shape_error("Input to " + current_component->to_string() + " (branch " + std::to_string(current_component->branch_id()) + "): " + e.what());
@@ -590,7 +630,7 @@ public:
                     return op_output[0];
                 }
 
-                auto const& succs = current_component->successors();
+                const std::unordered_map<int32_t, int32_t> succs = current_component->successors();
                 str_assert(succs.size() == 1, "Operator must have exactly one successor");
 
                 //Push the operator's single successor to the execution queue
@@ -624,38 +664,28 @@ public:
 
         xt::xarray<double> output_loss = loss_calc_->compute_gradient(predicted, expected);
 
-        struct Task {
-            int32_t branch_id;
-            int32_t components_index;
-            std::vector<xt::xarray<double>> data;
-        };
-
-        std::queue<Task> execution_queue;
+        std::queue<ComponentExecutionData> execution_queue;
         int32_t output_components_idx = (int32_t)components_.size() - 1;
         int32_t output_branch_id = components_[output_components_idx]->branch_id_;
         
         execution_queue.push({output_branch_id, output_components_idx, {output_loss}});
 
         while(!execution_queue.empty()) {
-            Task current = execution_queue.front();
+            ComponentExecutionData current = execution_queue.front();
             execution_queue.pop();
 
             int32_t branch_id = current.branch_id;
-            int32_t op_idx = current.components_index;
-
-            if (op_idx == NETWORK_BRANCH_COMBINED) {
-                continue;
-            }
+            int32_t op_idx = current.component_index;
 
             std::shared_ptr<NetworkComponent> current_component = components_.at(op_idx);
 
             // Handle splitters (act like combiners in the backwards pass, collecting inputs)
             if (std::shared_ptr<Splitter> splitter = std::dynamic_pointer_cast<Splitter>(current_component)) {
-                std::vector<xt::xarray<double>> branch_grads = splitter->backward(current.data);
+                std::vector<xt::xarray<double>> branch_grads = splitter->backward(current.component_input);
 
                 // Branch output is non-empty only when all required inputs have arrived
                 if (!branch_grads.empty()) {
-                    auto const& preds = splitter->predecessors();
+                    const std::unordered_map<int32_t, int32_t> preds = splitter->predecessors();
                     if (preds.empty()) {
                         return;
                     }
@@ -670,7 +700,7 @@ public:
             }
             // Handle combiners (act like splitters in the backwards pass, distributing gradients)
             else if (std::shared_ptr<Combiner> combiner = std::dynamic_pointer_cast<Combiner>(current_component)) {
-                std::vector<std::vector<xt::xarray<double>>> combiner_outputs = combiner->compute_backwards_pass(current.data, true);
+                std::vector<std::vector<xt::xarray<double>>> combiner_outputs = combiner->compute_backwards_pass(current.component_input, true);
 
                 std::unordered_map<int32_t, int32_t> preds = combiner->predecessors();
                 str_assert(!preds.empty(), "Combiner must have at least one predecessor");
@@ -681,18 +711,20 @@ public:
                     int32_t pred_branch_id = pred_it->first;
                     int32_t pred_op_idx = pred_it->second;
                     std::vector<xt::xarray<double>> out_data = combiner_outputs[out_idx < combiner_outputs.size() ? out_idx : 0];
+
                     execution_queue.push({pred_branch_id, pred_op_idx, out_data});
                 }
             }
             // Handle single operators
             else {
-                std::vector<xt::xarray<double>> op_output = current_component->backward(current.data);
+                std::vector<xt::xarray<double>> op_output = current_component->backward(current.component_input);
 
                 const std::unordered_map<int32_t, int32_t>& preds = current_component->predecessors();
+                //Stop early if there are no predecessors (it's the first component in the network)
                 if (preds.empty()) {
                     return;
                 }
-
+                //otherwise, the operator can have at most one component
                 str_assert(preds.size() == 1, "Operator must have exactly one predecessor");
 
                 //Push its sole predecessor to the execution queue
