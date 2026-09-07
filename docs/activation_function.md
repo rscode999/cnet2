@@ -1,6 +1,6 @@
 # ActivationFunction
 
-[Back to central documentation](Home)
+[Back to central documentation](Home.md)
 
 Network component that computes an element-wise function for all of its inputs.
 

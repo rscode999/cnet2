@@ -66,7 +66,7 @@ public:
     * @return the string "splitter ({branch count of this splitter object})"
     */
     virtual std::string to_string() const override {
-        return "splitter {" + std::to_string(branch_count_) + "}";
+        return "splitter {->" + std::to_string(branch_count_) + "}";
     }
 
 

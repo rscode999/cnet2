@@ -1,6 +1,6 @@
 # NetworkComponent
 
-[Back to central documentation](Home)
+[Back to central documentation](Home.md)
 
 Node in a network.
 
@@ -9,10 +9,10 @@ When added to a Network, a NetworkComponent receives a unique numerical index. T
 NetworkComponents are capable of creating deep pointer copies of themselves, so outside users cannot modify a class' private pointers.
 
 *Subclasses:*
-* [Operator](operator)
-    * [ActivationFunction](activation_function)
-    * [Layer](layer)
-* [Splitter, Combiner](control_flow)
+* [Operator](operator.md)
+    * [ActivationFunction](activation_function.md)
+    * [Layer](layer.md)
+* [Splitter, Combiner](control_flow.md)
 
 ---
 ---
@@ -152,7 +152,11 @@ The component can have one or more inputs, and one or more outputs. Each input a
 
 #### output stream insertion (<<)
 
-*Signature:* `template<typename CharT, typename Traits> std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const NetworkComponent& component)`
+*Signature:* 
+```
+template<typename CharT, typename Traits>
+std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const NetworkComponent& component)
+```
 
 Exports `component` to the output stream `output_stream`, returning `output_stream` with `component`'s information inside.
 

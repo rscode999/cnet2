@@ -1,6 +1,6 @@
 # LossCalculator
 
-[Back to central documentation](Home)
+[Back to central documentation](Home.md)
 
 Computes error between predicted and expected values. Used as the first step in the backwards pass.
 
@@ -82,7 +82,11 @@ Defaults to "loss_calculator" if not overridden by an implementing class.
 
 #### output stream insertion (<<)
 
-*Signature:* `template<typename CharT, typename Traits> friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const LossCalculator& calc)`
+*Signature:* 
+```
+template<typename CharT, typename Traits>
+friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const LossCalculator& calc)
+```
 
 Exports `calc` to the output stream `output_stream`, returning `output_stream` with `calc`'s information inside.
 

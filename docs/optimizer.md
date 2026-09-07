@@ -1,6 +1,6 @@
 # Optimizer
 
-[Back to central documentation](Home)
+[Back to central documentation](Home.md)
 
 Improves the weights of a network's layers.
 
@@ -102,7 +102,11 @@ Returns a string representation of the optimizer object and its hyperparameters.
 
 #### output stream insertion (<<)
 
-*Signature:* `template<typename CharT, typename Traits> friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Optimizer& optimizer)`
+*Signature:* 
+```
+template<typename CharT, typename Traits>
+friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& output_stream, const Optimizer& optimizer)
+```
 
 Exports `optimizer` to the output stream `output_stream`, returning `output_stream` with `optimizer`'s information inside.
 

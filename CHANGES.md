@@ -7,7 +7,7 @@
     - *Rationale:* Implementing PyTorch-like method definitions requires two objects: a proxy object that the user creates, and a network-internal object that stores the weights. In the case where an operator is created multiple times, each operator instance, as well as the proxy object, must be stored within the network. Having multiple types of objects adds unnecessary complexity. The framework matching CNet's style of network creation negates the small gains in flexibility.
 - Add unit testing through custom CUnit methods. Temporary measure until a more robust testing framework can be installed and used
 - Reorganize documentation to make it better suited to be a github wiki
-- Add Github workflow to run the unit tests and publish documentation to the github wiki
+- Add Github workflow to run the unit tests
 
 ## 0.9.0
 *17 August 2026*

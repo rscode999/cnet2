@@ -13,7 +13,8 @@ I have worked on the CNet project throughout the 2025-26 school year. When I sta
 But I needed *more power...*
 
 The seeds of a CNet successor arrived at the end of the 2025-26 school year.  
-To aid in future image-recognition projects, I wanted to add convolutional layers and the Adam optimizer. I soon learned that CNet was not as expansion-friendly as I thought. The forward pass logic supported only 1D linear layers without branching structures. Worse, the existing SGD optimizer code turned out to be bloated and unmaintainable. I had also learned more about how deep learning frameworks are implemented, explaining the unusual constructs of the PyTorch framework, especially why the optimization pass is not called through the network. Worse, the Eigen package that CNet uses did not support tensors of arbitrary dimension.
+To aid in future image-recognition projects, I wanted to add convolutional layers and the Adam optimizer.  
+I soon learned that CNet was not as expansion-friendly as I thought. The forward pass logic supported only 1D linear layers without branching structures. Worse, the existing SGD optimizer code turned out to be bloated and unmaintainable. I had also learned more about how deep learning frameworks are implemented, explaining the unusual constructs of the PyTorch framework, especially why the optimization pass is not called through the network. Worse, the Eigen package that CNet uses did not support tensors of arbitrary dimension.
 
 I realized that the best way to accomplish my goals and expand CNet is to rewrite the framework from the ground up.
 
@@ -39,15 +40,13 @@ This project requires the XTensor package and some of its supporting libraries.
 Open a terminal in the "lib" folder. Clone each repo, with the required version tags only:
 ```
 git clone --branch 0.27.0 https://github.com/xtensor-stack/xtensor
-
 git clone --branch 0.23.0 https://github.com/xtensor-stack/xtensor-blas
-
 git clone --branch 0.8.2 https://github.com/xtensor-stack/xtl
 ```
 
 You should have 3 directories inside the "lib" folder: xtensor, xtensor-blas, and xtl. Each should contain the "include" subdirectory, which contains the library source files.
 
-If any of the installations didn't work, go to the repo's tags. The Tags button should be near the Branches dropdown. Ensure that the version tag exists. If not, contact the development team.
+If any of the installations didn't work, go to the repo's tags. The Tags button should be near the Branches dropdown. Ensure that the version tag exists. If not, contact the CAST development team.
 
 ### Other Setup
 
@@ -55,7 +54,7 @@ Due to the large size of the XTensor libraries, the C/C++ VS Code extension is n
 Configuration files come with this repo.
 
 NOTE: If you want to use ClangD, ensure [MSVC Build Tools](https://learn.microsoft.com/en-us/cpp/overview/acquire-msvc?view=msvc-170) is installed.  
-Ensure the options for "Desktop development with C/C++" and MSVC Build Tools for x64/x86" are selected.
+Ensure the options for "Desktop development with C/C++" and "MSVC Build Tools for x64/x86" are selected during installation.
 
 ## Quick Start Guide
 
@@ -121,6 +120,8 @@ net.add_combiner({1, 2}, 0);
 ```
 Once merged, branch IDs are not reused. Even if more branches are created, branches 1 and 2 cannot be added to.
 
+See the [network branch creation section](docs/Home.md#network-branch-creation) for more details on branches.
+
 <br>
 
 To add a loss calculator and optimizer:
@@ -131,6 +132,13 @@ net.set_loss_calculator(std::make_shared<MeanSquaredError>());
 //Sets optimizer to SGD, with learning rate 0.02 and momentum coefficient 0.9
 std::shared_ptr<Optimizer> optimizer = std::make_shared<SGD>(0.02, 0.9);
 net.set_optimizer(optimizer);
+```
+
+<br>
+
+To check network configuration, export the network directly to an output stream:
+```
+std::cout << net << std::endl;
 ```
 
 <br>

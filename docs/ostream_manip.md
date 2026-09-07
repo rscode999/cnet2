@@ -1,6 +1,6 @@
 # Output Stream Manipulators
 
-[Back to central documentation](Home)
+[Back to central documentation](Home.md)
 
 Special functions that change the behavior of output streams.
 
@@ -10,7 +10,11 @@ Special functions that change the behavior of output streams.
 
 #### verbose
 
-*Signature:* `template<typename CharT, typename Traits> inline std::basic_ostream<CharT, Traits>& verbose(std::basic_ostream<CharT, Traits>& output_stream)`
+*Signature:* 
+```
+template<typename CharT, typename Traits> 
+inline std::basic_ostream<CharT, Traits>& verbose(std::basic_ostream<CharT, Traits>& output_stream)
+```
 
 Sets the given output stream to print more information about a network and its components.
 
@@ -34,7 +38,11 @@ cout << net << endl; //Prints more detailed information
 
 #### noverbose
 
-*Signature:* `template<typename CharT, typename Traits> inline std::basic_ostream<CharT, Traits>& noverbose(std::basic_ostream<CharT, Traits>& output_stream)`
+*Signature:* 
+```
+template<typename CharT, typename Traits> 
+inline std::basic_ostream<CharT, Traits>& noverbose(std::basic_ostream<CharT, Traits>& output_stream)
+```
 
 Stops an output stream from printing detailed network information.
 
